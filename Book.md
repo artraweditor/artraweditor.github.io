@@ -243,7 +243,7 @@ The source of the raw files ("images") shown in the book (which can be downloade
 
 # <a id="01"></a> Sources
 
-[ART documentation](https://art.pixls.us/Documentation.html)
+[ART documentation](https://artraweditor.github.io/Documentation.html)
 
 [RawTherapee - RawPedia](https://rawpedia.rawtherapee.com/Main_Page)
 
@@ -969,7 +969,7 @@ For the sake of simplicity, I will continue to use the term "image" primarily to
 
 You can find out more about the program on this page:
 
-[ART homepage](https://art.pixls.us)
+[ART homepage](https://artraweditor.github.io)
 
 Here you will find a link to download the program (and the CTL scripts), to access the forum, and here you can also find the documentation.
 
@@ -2347,7 +2347,7 @@ This chapter is based on the "ART Quick Start" article in the ART documentation,
 
 This is not a translation of the aforementioned document, but was created using it.
 
-Source of the raw file shown here (downloadable from here): [IMG_3760.CR2](https://art.pixls.us/resources/IMG_3760.CR2)
+Source of the raw file shown here (downloadable from here): [IMG_3760.CR2](https://artraweditor.github.io/resources/IMG_3760.CR2)
 
 The author of this image is Barry Thomas. The image is in the public domain, so you can use it to practice editing. The image shows Wollaton Hall, located in Nottinghamshire, United Kingdom. You may want to download the raw file so you can try out the editing steps.
 
@@ -3571,7 +3571,7 @@ The position of the shape in the preview, the width and height of the rectangle,
 
 ##### <a id="44152"></a> 4\.4\.1\.5\.2 Add, edit polygon
 
-For this part I used [Jean-Christophe Frisch's writing](https://art.pixls.us/Shapes).
+For this part I used [Jean-Christophe Frisch's writing](https://artraweditor.github.io/Shapes).
 
 It can be used to create a mask bounded by a polygon or a curved line.
 

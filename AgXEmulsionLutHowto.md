@@ -4,7 +4,7 @@
 
 Recently [*arctic*](https://discuss.pixls.us/u/arctic/summary) released [***agx-emulsion***](https://github.com/andreavolpato/agx-emulsion), a physics-based simulation of color film photography processing.
 
-[Alberto Griggio](https://discuss.pixls.us/u/agriggio) decided to extend [**ART**](https://art.pixls.us/) and make possible to integrate *agx-emulsion* as an additional type of **3dLUT**, similarly in concept to what is already possible with *CTL scripts*.
+[Alberto Griggio](https://discuss.pixls.us/u/agriggio) decided to extend [**ART**](https://artraweditor.github.io/) and make possible to integrate *agx-emulsion* as an additional type of **3dLUT**, similarly in concept to what is already possible with *CTL scripts*.
 
 Here, we describe the *installation of agx-emulsion* and its *integration in ART* using **Microsoft Windows, MacOS** and **Linux** so you can play with it, in case you are interested.
 
