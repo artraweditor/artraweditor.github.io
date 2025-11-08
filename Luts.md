@@ -14,8 +14,12 @@ which can be used to encode various powerful and flexible pixel-level operations
 Both kinds of LUTs must be enabled at compile time, by setting respectively `ENABLE_OCIO` and `ENABLE_CTL` to `True` in CMake. 
 When available, they can be used in both the "Film Simulation" and in the the "Color/Tone Corrections" modules.
 
+**Contents:**
+- [CLF LUTs](#clf)
+- [CTL scripts](#ctl)
 
-## CLF LUTs
+
+## CLF LUTs {#clf}
 
 Despite the name, CLF LUTs are not simply look-up tables, 
 but can encode a sequence of different pixel-level operations, 
@@ -108,7 +112,7 @@ Here are links to some useful tools for working with CLF LUTs.
 - [`combine_clf_luts.py` Python script (cross-platform)](resources/combine_clf_luts.py)
 
 
-## CTL scripts
+## CTL scripts {#ctl}
 
 [CTL (the Color Transformation Language)](https://acescentral.com/knowledge-base-2/ctl/) is a scripting language designed to create custom pixel-level image transformation operations.
 LUTs expressed as CTL scripts are even more powerful and flexible than CLF LUTs,

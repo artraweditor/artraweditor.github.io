@@ -34,7 +34,7 @@ title: Documentation
 
 - [Generating HDR output images](Hdroutput)
 
-- [Spectral film simulations in ART](AgXEmulsionLutHowto)
+- [Spectral film simulations in ART](SpectralFilmSimHowto)
 
 - [ART and AI-based tools](AItools)
 
