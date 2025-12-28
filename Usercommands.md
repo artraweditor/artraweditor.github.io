@@ -1,7 +1,7 @@
 # User Commands
 
 Since version 1.4, ART supports a simple form of plugins, called *user commands*.
-These are simply external programs that are accessible from the contextual menu in the file browser, which are executed on the currently selected files.
+These are simply external programs that are accessible from the contextual menu in the file browser or the folders panel, which are executed on the currently selected files or folder.
 
 ![User commands menu](resources/usercommands.png)
 
@@ -24,7 +24,7 @@ that must comply with the following specifications:
 
     * `Camera`: a regular expression for restricting the command to specific cameras, specified as `MAKE Model`; if not present, the command will match any camera (the matching is case insensitive);
     * `Extension`: a list of supported file extensions (by default any extension will match);
-    * `FileType`: `raw`, `nonraw` or `any` (default);
+    * `FileType`: `raw`, `nonraw`, `any` (default) or `directory`;
     * `MinArgs`: minimum number of arguments to provide (default `1`);
     * `MaxArgs`: maximum number of arguments to provide (default unbounded);
     * `NumArgs`: exact number of arguments to provide;
@@ -155,4 +155,15 @@ else
     # finally, we can run hugin
     hugin "${tiffs[@]}" || zenity --error --text="Something went wrong..."
 fi
+```
+
+## Example for folders
+
+This example adds a *Slideshow* item to the folder tree view context menu. It starts the Gwenview picture viewer in slideshow mode with the selected folder as an argument.
+
+```txt
+[ART UserCommand]
+Label=Slideshow
+Command=gwenview -s
+FileType=directory
 ```
