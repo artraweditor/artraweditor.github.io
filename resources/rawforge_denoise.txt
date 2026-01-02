@@ -1,0 +1,5 @@
+[ART UserCommand]
+Label=AI denoise (RawForge)
+Command=./rawforge_denoise.sh
+NumArgs=1
+FileType=raw

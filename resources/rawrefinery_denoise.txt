@@ -1,5 +1,0 @@
-[ART UserCommand]
-Label=AI denoise (RawRefinery)
-Command=./rawrefinery_denoise.sh
-NumArgs=1
-FileType=raw

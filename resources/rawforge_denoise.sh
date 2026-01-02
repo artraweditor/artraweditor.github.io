@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# select the device to use for denoising (cuda, mps, cpu, ...)
-DEVICE=mps
-
 # Python interpreter to use
-PYTHON=$HOME/src/RawRefinery-venv/bin/python
+PYTHON=$HOME/src/rawforge-venv/bin/python
 
+# ensure exiftool and zenity are in the PATH
 export PATH=$HOME/.local/bin:/opt/local/bin:/usr/local/bin:$PATH
 
 #############################################################################
@@ -22,11 +20,10 @@ import time
 import subprocess
 import numpy
 import json
-from RawRefinery.application.ModelHandler import (
-    ModelController, MODEL_REGISTRY, InferenceWorker
-)
+from RawForge.application.ModelHandler import ModelHandler
+from RawForge.application.MODEL_REGISTRY import MODEL_REGISTRY
+import RawForge.application.InferenceWorker as iw
 from RawHandler.RawHandler import CoreRawMetadata
-from PySide6.QtCore import Slot
 
 
 def getopts():
@@ -34,8 +31,8 @@ def getopts():
     p.add_argument('input')
     p.add_argument('output')
     models = sorted(MODEL_REGISTRY.keys())
-    p.add_argument('--model', choices=models, default='Tree Net Denoise')
-    p.add_argument('--device', default='cpu')
+    p.add_argument('--model', choices=models, default='TreeNetDenoise')
+    p.add_argument('--device')
     p.add_argument('--exiftool')
     def get_iso(s):
         s = s.lower()
@@ -51,14 +48,15 @@ def getopts():
 
 def main():
     opts = getopts()
-    controller = ModelController()
-    controller.set_device(opts.device)
-    controller.load_model(opts.model)
+    handler = ModelHandler()
+    if opts.device:
+        handler.set_device(opts.device)
+    handler.load_model(opts.model)
     print("1", flush=True)
 
-    controller.colorspace = 'camera'
+    handler.colorspace = 'camera'
 
-    iso = controller.load_rh(opts.input)
+    iso = handler.load_rh(opts.input)
     print("2", flush=True)
 
     if opts.iso is not None:
@@ -81,9 +79,9 @@ def main():
             iso = opts.iso
     iso *= opts.strength
 
-    controller.rh.colorspace = 'camera'
-    md = controller.rh.core_metadata
-    controller.rh.core_metadata = CoreRawMetadata(
+    handler.rh.colorspace = 'camera'
+    md = handler.rh.core_metadata
+    handler.rh.core_metadata = CoreRawMetadata(
         md.black_level_per_channel,
         md.white_level,
         numpy.eye(3),
@@ -99,31 +97,34 @@ def main():
                 [0.0, 0.0, 1.0],
             ]
         )
-    controller.rh.rgb_colorspace_transform = rgb_colorspace_transform
+    handler.rh.rgb_colorspace_transform = rgb_colorspace_transform
     
     conditioning = [iso, 0]
 
-    @Slot(float)
-    def on_progress(val):
-        print(str(2 + int(98 * val)), flush=True)
+    def tqdm(iterable, *args, **kwds):
+        l = list(iterable)
+        n = len(l)
+        p = 2
+        for i, r in enumerate(l):
+            yield r
+            c = 2 + int(98 * i/n)
+            if c > p:
+                print(str(c), flush=True)
+                p = c
+    iw.tqdm = tqdm
 
-    @Slot(str)
-    def on_error(msg):
-        for line in msg.splitlines():
+    w = iw.InferenceWorker(handler.model, 
+                           handler.model_params,
+                           handler.device, handler.rh, conditioning, None)
+    try:
+        img, denoised = w.run()
+        handler.handle_full_image(denoised, opts.output, True)
+    except Exception as e:
+        for line in str(e).splitlines():
             sys.stderr.write(f'ERROR: {line}\n')
         sys.stderr.flush()
         sys.exit(0)
-
-    controller.filename = opts.output
-    controller.save_cfa = True
-    controller.start_time = time.perf_counter()
-    w = InferenceWorker(controller.model, 
-                        controller.model_params,
-                        controller.device, controller.rh, conditioning, None)
-    w.finished.connect(controller.handle_full_image)
-    w.progress.connect(on_progress)
-    w.error.connect(on_error)
-    w.run()
+    
     if opts.exiftool and os.path.exists(opts.output):
         subprocess.run([opts.exiftool, '-TagsFromFile', opts.input, opts.output,
                         '-all', '-icc_profile', '-overwrite_original'])
@@ -133,7 +134,6 @@ if __name__ == '__main__':
 EOF
 
 $PYTHON "${d}/rr.py" \
-        --device $DEVICE \
         "$1" "${d}/out.dng" \
         --exiftool exiftool \
         --iso auto \

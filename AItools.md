@@ -13,12 +13,12 @@ I'd like to show how to do that for Unix-based systems
 ## AI-based denoising
 
 We can use either [nind-denoise](https://github.com/trougnouf/nind-denoise)
-or [RawRefinery](https://github.com/rymuelle/RawRefinery)
+or [RawForge](https://github.com/rymuelle/RawForge)
 to perform advanced noise reduction with neural networks.
 In order to integrate them with ART, we can use the attached user commands and compation scripts:
 
 - [nind_denoise.txt](resources/nind_denoise.txt) and [nind_denoise_raw.sh](resources/nind_denoise_raw.sh) for "nind-denoise"; or
-- [rawrefinery_denoise.txt](resources/rawrefinery_denoise.txt) and [rawrefinery_denoise.sh](resources/rawrefinery_denoise.sh) for "RawRefinery".
+- [rawforge_denoise.txt](resources/rawforge_denoise.txt) and [rawforge_denoise.sh](resources/rawforge_denoise.sh) for "RawForge".
 
 They should all be placed in `$HOME/.config/ART/usercommands`.
 The scripts need to be modified to point to the installation directory of 
@@ -70,27 +70,27 @@ You should have a new user command called "AI denoise (nind-denoise)". If everyt
 
 - [AI denoising demo](demos/ART-AI-denoise.mp4)
 
-### RawRefinery configuration
+### RawForge configuration
 
 #### Installation
 
-Follow the instructions at https://github.com/rymuelle/RawRefinery, 
+Follow the instructions at https://github.com/rymuelle/RawForge, 
 creating a suitable Python virtual env (below, I will assume 
-it is called `RawRefinery-venv`, and is installed in `$HOME/src`;
+it is called `rawforge-venv`, and is installed in `$HOME/src`;
  if your setup is different, adjust accordingly).
-The `rawrefinery_denoise.sh` requires also [ExifTool](http://exiftool.org), 
+The `rawforge_denoise.sh` requires also [ExifTool](http://exiftool.org), 
 so make sure it is available on your `$PATH`.
 
 #### ART user command configuration
 
-Open `rawrefinery_denoise.sh` and edit the variables at the beginning of the file to adapt to your environment:
+Open `rawforge_denoise.sh` and edit the variables at the beginning of the file to adapt to your environment:
 
 ```bash
 # select the device to use for denoising (cuda, mps, cpu, ...)
 DEVICE=mps
 
 # Python interpreter to use
-PYTHON=$HOME/src/RawRefinery-venv/bin/python
+PYTHON=$HOME/src/rawforge-venv/bin/python
 
 export PATH=$HOME/.local/bin:/opt/local/bin:/usr/local/bin:$PATH
 
@@ -99,7 +99,7 @@ export PATH=$HOME/.local/bin:/opt/local/bin:/usr/local/bin:$PATH
 
 #### Testing that it works
 
-You should have a new user command called "AI denoise (RawRefinery)". 
+You should have a new user command called "AI denoise (RawForge)". 
 If everything is configured properly, activating it should result in an image 
 `FILENAME-denoised.dng` generated in the current directory
  (when invoked on a file called `FILENAME.raw`).
