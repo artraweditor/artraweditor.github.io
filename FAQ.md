@@ -1,13 +1,20 @@
 # The ART FAQ
 
 - **What is ART?** 
-  ART is an acronym, standing for *Another RawTherapee*. It is definitely not art.
+  ART is an acronym, standing for *A Raw Toolbox*. 
+  Previously, it used to stand for *Another RawTherapee*. 
+  In either case, it is definitely not art.
 
 - **Isn't it a stupid name?**
   Yes.
 
 - **So, is this going to change?**
   No.
+
+- **Why did the meaning of the acronym change?**
+  Although ART was forked from RawTherapee, 
+  both programs have evolved quite a lot since the fork happened,
+  to the point that considering them related might be misleading.
 
 - **Ok, enough with the name. What are the goals of the project?**
   The main goal is *to have fun developing it*.
