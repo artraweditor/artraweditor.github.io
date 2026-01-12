@@ -137,6 +137,7 @@ $PYTHON "${d}/rr.py" \
         "$1" "${d}/out.dng" \
         --exiftool exiftool \
         --iso auto \
+        --model TreeNetDenoiseLight \
     | zenity --progress --auto-kill --auto-close --text="Denoising..."
 
 # check if there was an error
