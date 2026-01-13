@@ -4,8 +4,6 @@ title: Documentation
 
 # Documentation
 
-### Official documentation
-
 - [ART FAQ -- read this first please!](FAQ)
 
 - [ART quick start guide](Quickstart)
@@ -38,7 +36,7 @@ title: Documentation
 
 - [ART and AI-based tools](AItools)
 
-### Other documentation sources (not maintained by the project): 
+### Other documentation sources (not maintained by the project)
 
 - [An introduction to ART (external blog post)](https://yap.bozart.eu/articles/art/intro/index.html)
 
