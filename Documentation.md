@@ -4,7 +4,7 @@ title: Documentation
 
 # Documentation
 
-"Official" documentation:
+### Official documentation
 
 - [ART FAQ -- read this first please!](FAQ)
 
@@ -38,7 +38,7 @@ title: Documentation
 
 - [ART and AI-based tools](AItools)
 
-Other documentation sources ("unofficial", not maintained by the project): 
+### Other documentation sources (not maintained by the project): 
 
 - [An introduction to ART (external blog post)](https://yap.bozart.eu/articles/art/intro/index.html)
 
