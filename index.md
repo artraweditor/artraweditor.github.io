@@ -26,7 +26,7 @@ Compared to the latter, ART differs in the following main aspects:
 
 - Support for using [LibRaw](https://www.libraw.org) for decoding raw files.
 
-- Support for [ACES CLF LUTs](https://docs.acescentral.com/specifications/clf/) using [OpenColorIO](https://opencolorio.org/).
+- Support for [ACES CLF LUTs](https://docs.acescentral.com/clf/specification/) using [OpenColorIO](https://opencolorio.org/).
 
 - Support for [CTL scripts](https://acescentral.com/knowledge-base-2/ctl/) using the [ACES CTL interpreter](https://github.com/ampas/CTL).
 

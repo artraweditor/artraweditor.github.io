@@ -7,7 +7,7 @@ Starting from version 1.16, however, the support for LUTs has been significantly
 In particular, now ART supports two new kinds of LUTs 
 which can be used to encode various powerful and flexible pixel-level operations:
 
-- [ACES CLF LUTs](https://docs.acescentral.com/specifications/clf/), thanks to the use of [OpenColorIO v2](https://opencolorio.org/) (OCIO for short);
+- [ACES CLF LUTs](https://docs.acescentral.com/clf/specification/), thanks to the use of [OpenColorIO v2](https://opencolorio.org/) (OCIO for short);
 
 - Scripts written in the [Color Transformation Language (CTL)](https://acescentral.com/knowledge-base-2/ctl/), thanks to the use of the [ACES CTL interpreter](https://github.com/ampas/CTL) (since version 1.21).
 
@@ -35,7 +35,7 @@ all of which can be done with OCIO tools and a little bit of scripting.
 
 ### Generating ART-compatible CLF LUTs
 
-The OCIO distribution comes with [`ociomakeclf`](https://docs.acescentral.com/guides/clf/#ociomakeclf), a command-line tool to convert many LUT formats to CLF. Conveniently, `ociomakeclf` can also perform color space conversions from the space required by the LUT to ACES 2065-1, which is what ART assumes, via the `--csc` parameter.
+The OCIO distribution comes with [`ociomakeclf`](https://docs.acescentral.com/clf/guides/#ociomakeclf), a command-line tool to convert many LUT formats to CLF. Conveniently, `ociomakeclf` can also perform color space conversions from the space required by the LUT to ACES 2065-1, which is what ART assumes, via the `--csc` parameter.
 
 For many "creative-type" LUTs, which do not change the color space of the input image, invoking `ociomakeclf` with the appropriate value for `--csc` is all that is needed.
 For example, converting one of the [ARRI Look LUTs](https://www.arri.com/en/learn-help/learn-help-camera-system/alexa-35-workflows/look-files) in LogC3 space to CLF in ACES 2065-1 can be done by using `--csc ARRI_ALEXA-LOGC-EI800-AWG`, whereas for [RED Creative LUTs](https://support.red.com/hc/en-us/articles/360041467533-RED-LUT-Downloads), instead, `--csc RED_LOG3G10-RWG` should be used.
