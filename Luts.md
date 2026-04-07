@@ -38,7 +38,7 @@ all of which can be done with OCIO tools and a little bit of scripting.
 The OCIO distribution comes with [`ociomakeclf`](https://docs.acescentral.com/clf/guides/#ociomakeclf), a command-line tool to convert many LUT formats to CLF. Conveniently, `ociomakeclf` can also perform color space conversions from the space required by the LUT to ACES 2065-1, which is what ART assumes, via the `--csc` parameter.
 
 For many "creative-type" LUTs, which do not change the color space of the input image, invoking `ociomakeclf` with the appropriate value for `--csc` is all that is needed.
-For example, converting one of the [ARRI Look LUTs](https://www.arri.com/en/learn-help/learn-help-camera-system/alexa-35-workflows/look-files) in LogC3 space to CLF in ACES 2065-1 can be done by using `--csc ARRI_ALEXA-LOGC-EI800-AWG`, whereas for [RED Creative LUTs](https://support.red.com/hc/en-us/articles/360041467533-RED-LUT-Downloads), instead, `--csc RED_LOG3G10-RWG` should be used.
+For example, converting one of the [ARRI Look LUTs](https://www.arri.com/en/learn-help/learn-help-camera-system/alexa-35-workflows) in LogC4 space to CLF in ACES 2065-1 can be done by using `--csc ARRI_LOGC4`, whereas for [RED Creative LUTs](https://support.red.com/hc/en-us/articles/360041467533-RED-LUT-Downloads), instead, `--csc RED_LOG3G10-RWG` should be used.
 
 The process is a bit more involved for LUTs that also perform color space conversions of their inputs, 
 such as the LUTs used to implement output transforms in various scene-referred pipelines typically used in video editing such as ACES.
