@@ -74,7 +74,7 @@ You should have a new user command called "AI denoise (nind-denoise)". If everyt
 
 #### Installation
 
-Follow the instructions at https://github.com/rymuelle/RawForge, 
+Follow the instructions on the [https://github.com/rymuelle/RawForge](GitHub RawForge page), 
 creating a suitable Python virtual env (below, I will assume 
 it is called `rawforge-venv`, and is installed in `$HOME/src`;
  if your setup is different, adjust accordingly).
