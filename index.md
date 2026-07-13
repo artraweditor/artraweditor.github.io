@@ -44,8 +44,8 @@ Compared to the latter, ART differs in the following main aspects:
 
 ## Status
 
-The current version is 1.26.6. It was released on June 15th 2026.
-[Change log](https://github.com/artraweditor/ART/compare/1.26.5...1.26.6).
+The current version is 1.26.7. It was released on July 13th 2026.
+[Change log](https://github.com/artraweditor/ART/compare/1.26.6...1.26.7).
 
 ## License 
 ART is released under the [GNU General Public License version 3](https://www.gnu.org/licenses/gpl.html).
