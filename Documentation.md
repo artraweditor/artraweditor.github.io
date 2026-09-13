@@ -61,7 +61,9 @@ title: Documentation
 
 ## Compilation instructions
 
-- [Building on Ubuntu-based Linux distributions](BuildUbuntu)
+- [Linux](BuildLinux)
 
-- For other systems, see [RawPedia](http://rawpedia.rawtherapee.com/Main_Page#Compiling). The only difference between compiling RawTherapee and ART is that ART depends also on [exiv2](http://exiv2.org) and (optionally, but highly recommended) [LibRaw](http://libraw.org), [OpenColorIO](https://opencolorio.org/) and the [CTL interpreter](https://github.com/ampas/CTL).
+- [macOS](BuildMacOS)
+
+- [Windows](BuildWindows)
 
