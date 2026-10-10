@@ -36,6 +36,8 @@ title: Documentation
 
 - [ART and AI-based tools](AItools)
 
+- [Using custom working profiles](CustomWorkingProfiles)
+
 ### Other documentation sources (not maintained by the project)
 
 - [An introduction to ART (external blog post)](https://yap.bozart.eu/articles/art/intro/index.html)
