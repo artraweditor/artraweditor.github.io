@@ -241,7 +241,88 @@ where `<lut-dim>` is an integer specifying the dimension of the intermediate
 3dLUT. The special value `-1` means that 3dLUTs are never used for this
 script, neither on export nor for previews.
 
-Finally, it is possible to define different presets for the script by using the `@ART-preset` tag. The format is the following:
+### Pipettes for curves
+
+Curves defined by a CTL script can have a "pipette", i.e. the button that, like
+for the built-in curves (e.g. the tone curve or the RGB curves), lets you hover
+over the image to see where the pixel under the cursor falls on the curve, and
+Ctrl+click to add a point to the curve at that position. Since ART cannot know
+what the input of a curve is, a script that wants to support this must say so
+with the `@ART-pipette` tag, and provide a second entry point,
+`ART_fill_pipette`, that computes the position in the curve for each pixel.
+
+The format of the tag is the following:
+
+```
+// @ART-pipette: [<curve-name>, <curve-name>, ...]
+```
+
+where each `<curve-name>` is the name of a curve parameter of `ART_main` (see
+above). The position of a curve in this list is its *curve id*. Only the curves
+in the list get a pipette button. The tag can appear anywhere in the script. It
+is an error to name a parameter that does not exist or that is not a curve.
+
+The entry point has the following signature:
+
+```C
+void ART_fill_pipette(varying float r, varying float g, varying float b,
+                      output varying float r_out, output varying float g_out, output varying float b_out,
+                      int curve_id)
+```
+
+The `r`, `g`, `b` input values are exactly those that `ART_main` would receive
+for the same pixel (in particular, they are converted to the colorspace given
+by `@ART-colorspace`, if any). `curve_id` is a uniform `int`, which tells which
+curve (according to the order of the `@ART-pipette` list) the pipette is for.
+The function must write in the output variables the position on the x axis of
+that curve that corresponds to the pixel, in the range [0, 1]. As for the
+built-in curves, the three outputs are the values for the red, green and blue
+channels; a channel that is not meaningful for the curve can be set to `-1` to
+be ignored. Most curves will simply set all three outputs to the same value.
+
+Like `ART_main`, `ART_fill_pipette` can have additional uniform parameters,
+declared after `curve_id`. They are matched by name and type with the
+parameters of `ART_main`, and receive the same values. This is useful if the
+position in the curve depends on other parameters of the script. Parameters
+not present (or with a different type) in `ART_main` are not set and keep their
+default value.
+
+If `@ART-pipette` is used but `ART_fill_pipette` is missing or has a wrong
+signature, the script still works but no pipettes are available (a message is
+printed in verbose mode).
+
+For example, here is a script with a curve acting on the luminance of the
+pixels, and its pipette:
+
+```C
+// @ART-param: ["lcurve", "Luminance curve", 0, 0]
+// @ART-pipette: ["lcurve"]
+
+void ART_main(varying float r, varying float g, varying float b,
+              output varying float r_out, output varying float g_out, output varying float b_out,
+              float lcurve[256])
+{
+    // ... apply the curve to the luminance
+}
+
+void ART_fill_pipette(varying float r, varying float g, varying float b,
+                      output varying float r_out, output varying float g_out, output varying float b_out,
+                      int curve_id)
+{
+    // the input of the curve is the luminance of the pixel
+    float Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    r_out = Y;
+    g_out = Y;
+    b_out = Y;
+}
+```
+
+Pipettes are available both in the Film Simulation tool and in the LUT mode of
+the Color Correction tool (where each region has its own pipettes).
+
+### Presets 
+
+Finally, it is also possible to define different presets for the script by using the `@ART-preset` tag. The format is the following:
 
 ```
 // @ART-preset: [<preset-name>, <gui-name>, <preset-dictionary>]
