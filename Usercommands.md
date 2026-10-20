@@ -36,9 +36,69 @@ that must comply with the following specifications:
     * `MatchFocalLen`: match on the focal length;
     * `MatchDimensions`: match on the image dimensions.
 
+## Environment
+
+User commands are run with the directory containing the ART executables added to the `$PATH`, so `ART-cli` and `ART-dialogs` (see below) can be invoked by name, without specifying their location. Any other program that the command needs (e.g. `hugin` in the example below) must be reachable through the `$PATH` that ART inherited from the environment it was started from; this can be a problem on macOS when ART is started from the Finder, where the `$PATH` is very short. In that case, a script can set it explicitly (e.g. `export PATH=/opt/homebrew/bin:$PATH`).
+
+## Showing dialogs: `ART-dialogs`
+
+User commands often need to interact with the user, e.g. for reporting errors, showing the progress of a long operation, or asking for a file name. For this, since version 1.26.11 ART includes the `ART-dialogs` tool, installed next to `ART` and `ART-cli`. It is a small program with the same look as the ART main window, and with a command line that follows the one of the well-known [`zenity`](https://help.gnome.org/users/zenity/stable/) tool (of which it implements a subset), so it can be used in scripts in the same way.
+
+The kind of dialog is chosen with one of the following options:
+
+| Option | Dialog |
+|---|---|
+| `--info`, `--warning`, `--error`, `--question` | a message dialog, showing the text given with `--text` |
+| `--progress` | a progress bar, driven by the standard input (see below) |
+| `--file-selection` | a file chooser; the selected path is printed to the standard output |
+| `--entry` | a text entry; the entered text is printed to the standard output |
+| `--list` | a list of choices; the selected rows are printed to the standard output |
+| `--scale` | a slider; the chosen value is printed to the standard output |
+
+Options common to all the dialogs:
+
+* `--title=TEXT`, `--text=TEXT`: window title and message (the text can contain Pango markup, e.g. `<b>bold</b>`, unless `--no-markup` is given; `\n` and `\t` are interpreted as newline and tab);
+* `--width=N`, `--height=N`: window size;
+* `--ok-label=TEXT`, `--cancel-label=TEXT`: button labels;
+* `--timeout=SECONDS`: close the dialog after the given time;
+* `--no-wrap`: do not wrap the message text.
+
+The result is communicated through the exit status: `0` if the user confirmed (OK, Yes or Save), `1` if the user cancelled or closed the window (or answered No to a `--question`), `5` if the timeout expired, and `255` for a command line error. Scripts should therefore check `$?` to detect cancellation.
+
+### Progress dialogs
+
+`ART-dialogs --progress` reads its standard input line by line:
+
+* a line with just a number (`0`-`100`) sets the progress percentage;
+* a line starting with `#` sets the message text to the rest of the line;
+* any other line is ignored.
+
+Options: `--percentage=N` (initial value), `--pulsate` (an animated bar, for operations of unknown length, ignoring the percentages), `--auto-close` (close the dialog when `100` is reached or when the input ends, with exit status `0`), `--no-cancel` (hide the cancel button) and `--auto-kill` (terminate the parent process, i.e. the script, if the user cancels). Without `--auto-close`, the dialog stays open at the end of the input, until the user presses OK.
+
+When the user cancels, `ART-dialogs` exits with status `1` and stops reading, so the program writing to the pipe (typically `ART-cli --progress`) is terminated by `SIGPIPE`. This is how the example below handles cancellation.
+
+### File selection dialogs
+
+`ART-dialogs --file-selection` accepts `--save` (choose a file name to save to), `--directory` (select a folder), `--multiple` (select more than one file; the paths are separated by the `--separator` string, `|` by default), `--filename=PATH` (initial file or folder), `--confirm-overwrite` and one or more `--file-filter="Name | *.ext *.ext2"`. For example:
+
+```bash
+out=$(ART-dialogs --file-selection --save --confirm-overwrite \
+        --file-filter="TIFF files | *.tif *.tiff" --file-filter="All files | *")
+if [ "$out" != "" ]; then
+    # the user picked a file name
+    ...
+fi
+```
+
+### Other dialogs
+
+* `--entry` accepts `--entry-text=TEXT` (initial value) and `--hide-text` (for passwords).
+* `--list` requires one `--column=NAME` per column, and takes the cell values as additional arguments, row by row. It also accepts `--checklist` or `--radiolist` (the first column then holds `TRUE` or `FALSE` and is displayed as check boxes or radio buttons), `--multiple`, `--print-column=N|ALL` (which column to print, `1` by default), `--hide-column=N`, `--hide-header` and `--separator=STRING`.
+* `--scale` accepts `--value=N`, `--min-value=N`, `--max-value=N` and `--step=N`.
+
 ## Example
 
-Here is a complete example of a user command that invokes Hugin on the currently selected raw files, after converting them to tiff. The script works on Linux, and assumes that `hugin`, `ART-cli` and `zenity` are installed an in the `$PATH`.
+Here is a complete example of a user command that invokes Hugin on the currently selected raw files, after converting them to tiff. The script works on Linux, and assumes that `hugin` is installed and in the `$PATH`. `ART-cli` and `ART-dialogs` are provided by ART itself.
 
 First, we define the following user command `hugin-raw.txt`, putting in in `$HOME/.config/ART/usercommands` (create the directory if it doesn't exist):
 
@@ -122,7 +182,7 @@ fi
 # process the raw files with ART-cli, adding a progress dialog 
 # for user notification
 ART-cli --progress $fast "${sidecar[@]}" -p $t -Y -t -b16 -c "$@" 2>"$d/error" \
-    | zenity --width=500 --progress --auto-close --text="Converting to TIFF..."
+    | ART-dialogs --width=500 --progress --auto-close --text="Converting to TIFF..."
 
 # a non-zero exit status means the user cancelled the operation
 if [ $? -ne 0 ]; then
@@ -141,7 +201,7 @@ rm -rf $d
 
 if [ "$err" != "" ]; then
     # show the error message if something went wrong
-    zenity --error --text="$err"
+    ART-dialogs --error --text="$err"
 else
     # otherwise, prepare the list of arguments to provide to hugin. 
     # Note: we are using bash arrays here to be robust wrt. file names
@@ -153,7 +213,7 @@ else
     done
 
     # finally, we can run hugin
-    hugin "${tiffs[@]}" || zenity --error --text="Something went wrong..."
+    hugin "${tiffs[@]}" || ART-dialogs --error --text="Something went wrong..."
 fi
 ```
 
