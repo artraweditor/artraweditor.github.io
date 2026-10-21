@@ -5,6 +5,8 @@ layout: post
 
 # About
 
+<p style="text-align:center"><img src="resources/screenshot.png" alt="ART screenshot" style="max-width:100%; height:auto; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.25);"></p>
+
 Welcome to the home page of ART, a [free, open-source](https://www.gnu.org/philosophy/philosophy.html), cross-platform 
 raw image processing program. 
 ART is a derivative of the popular [RawTherapee](http://rawtherapee.com),
