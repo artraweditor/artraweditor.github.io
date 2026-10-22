@@ -150,6 +150,52 @@ At this point you can test if everything works:
 
 ![*spektrafilm* module in ART](resources/spektrafilm-lut.png)
 
+### Using the Rust port of *spektrafilm* (optional) {#spektrafilm-rs}
+
+`spektrafilm_mklut.py` can also use
+[*spektrafilm-rs*](https://github.com/turbasvin/spektrafilm-rs) 
+(or the command-line version of [Negs](https://github.com/noahhaasis/negs) on macOS), a Rust port of
+*spektrafilm*, instead of the original Python code. It is considerably faster (in particular
+when generating the LUTs), and, since it is run as an external program, it does not need
+*spektrafilm* to be installed in the Python environment.
+
+1.  Build the command line tool (this requires a [Rust toolchain](https://rustup.rs/)):
+
+    ```bash
+    git clone https://github.com/turbasvin/spektrafilm-rs
+    cd spektrafilm-rs
+    cargo build --release -p spektrafilm-cli
+    ```
+
+    This produces the executable `target/release/spektrafilm`. The
+    `data` directory in the same checkout contains the film and paper profiles.
+
+2.  The script needs `numpy` and `tifffile` in the Python environment
+    (`scipy` is also needed if you use the "Auto adjust" option):
+
+    ```bash
+    pip install numpy scipy tifffile
+    ```
+
+3.  Edit the `"command"` line of `ART_spektrafilm.json` to select the Rust backend and
+    to tell the script where the executable is, e.g.:
+
+    ```json
+        "command" : "/home/<username>/envs/ART-filmsim/bin/python spektrafilm_mklut.py --server --backend rs --rs-bin /path/to/spektrafilm-rs/target/release/spektrafilm",
+    ```
+
+    The `data` directory is looked up next to the executable's checkout; if it is somewhere
+    else, add `--rs-data-dir /path/to/data`. Instead of the command line options you can
+    also set the `SPEKTRAFILM_RS_BIN` and `SPEKTRAFILM_RS_DATA` environment variables.
+
+By default the Rust port uses the GPU when it can. To force the CPU, add `--rs-backend cpu`
+(or `--rs-backend wgpu` to force the GPU).
+
+<!-- **Differences from the Python version:** the Rust port does not implement the output gamut -->
+<!-- compression that *spektrafilm* applies for the ACES output used here, so highlights -->
+<!-- are not smoothly rolled off and are brighter than with the Python backend. -->
+<!-- Otherwise, results match closely (the remaining differences are tiny). -->
+
 ### Updating *spektrafilm* 
 
 In order to keep both the ***spektrafilm*** Python code base and its support in ART up to date:
@@ -206,4 +252,4 @@ And if you want, you can also put it in your configured CLUT directory to have i
 
 All the information provided on this document is provided on an "*as-is*" basis and you agree that you use such information entirely at *your own risk*. We give *no warranty* and accept *no responsibility or liability for the accuracy or the completeness of the information contained in this document*. 
 
-*(Version 0.5  -- 2026/05/30)*
+*(Version 0.6  -- 2026/10/22)*
