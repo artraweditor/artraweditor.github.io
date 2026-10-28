@@ -1,4 +1,4 @@
 [ART UserCommand]
 Label=AI masking (SMART)
-Command=./smart_masking.sh
+Command=python3 ./smart_masking.py -f --keep
 NumArgs=1

@@ -1,5 +1,5 @@
 [ART UserCommand]
 Label=AI denoise (nind-denoise)
-Command=./nind_denoise_raw.sh
+Command=python3 ./nind_denoise_raw.py
 NumArgs=1
 FileType=raw

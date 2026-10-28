@@ -1,5 +1,5 @@
 [ART UserCommand]
 Label=AI denoise (RawForge)
-Command=./rawforge_denoise.sh
+Command=python3 ./rawforge_denoise.py
 NumArgs=1
 FileType=raw

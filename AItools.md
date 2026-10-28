@@ -12,16 +12,32 @@ I'd like to show how to do that for Unix-based systems
 
 ## AI-based denoising
 
-We can use either [nind-denoise](https://github.com/trougnouf/nind-denoise)
-or [RawForge](https://github.com/rymuelle/RawForge)
+We can use [nind-denoise](https://github.com/trougnouf/nind-denoise),
+[RawForge](https://github.com/rymuelle/RawForge)
+or [greycard-denoise-raw](https://github.com/agriggio/greycard-denoise-raw)
 to perform advanced noise reduction with neural networks.
-In order to integrate them with ART, we can use the attached user commands and compation scripts:
+In order to integrate them with ART, we can use the attached user commands and companion scripts:
 
-- [nind_denoise.txt](resources/nind_denoise.txt) and [nind_denoise_raw.sh](resources/nind_denoise_raw.sh) for "nind-denoise"; or
-- [rawforge_denoise.txt](resources/rawforge_denoise.txt) and [rawforge_denoise.sh](resources/rawforge_denoise.sh) for "RawForge".
+- [nind_denoise.txt](resources/nind_denoise.txt) and [nind_denoise_raw.py](resources/nind_denoise_raw.py) for "nind-denoise"; or
+- [rawforge_denoise.txt](resources/rawforge_denoise.txt) and [rawforge_denoise.py](resources/rawforge_denoise.py) for "RawForge"; or
+- [greycard_denoise.txt](resources/greycard_denoise.txt) and [greycard_denoise.py](resources/greycard_denoise.py) for "greycard-denoise-raw".
 
-They should all be placed in `$HOME/.config/ART/usercommands`.
-The scripts need to be modified to point to the installation directory of 
+The scripts show progress bars and error messages with
+[`ART-dialogs`](Usercommands#showing-dialogs-art-dialogs),
+which is included with ART (since version 1.26.11)
+and is found automatically when the scripts are run as ART user commands.
+
+The companion scripts are written in Python, so that they are not tied to a specific platform.
+They only use the Python standard library, so any Python 3 (3.8 or later) will do to run them:
+the AI tools themselves run in their own virtual environments, as explained below.
+The `.txt` files start the scripts with the `python3` command:
+if your Python interpreter is called differently (e.g. `python` on Windows),
+edit the `Command` line accordingly.
+(I could only test the scripts on macOS, but nothing in them should be specific to it.)
+
+All the files should be placed in `$HOME/.config/ART/usercommands`
+(`%LOCALAPPDATA%\ART\usercommands` on Windows).
+The settings at the beginning of the scripts need to be modified to point to the installation directory of 
 the respective denoiser.
 Some installation instructions appear below.
 
@@ -46,22 +62,17 @@ Some installation instructions appear below.
 
 #### ART user command configuration
 
-Open `nind_denoise_raw.sh` and edit the variables at the beginning of the file to adapt to your environment:
+Open `nind_denoise_raw.py` and edit the settings at the beginning of the file to adapt to your environment:
 
-```bash
+```python
 # select the device to use for denoising (cuda, mps, cpu, ...)
-DEVICE=mps
+DEVICE = "mps"
 
-# Python interpreter to use
-PYTHON=$HOME/src/ART-AI-venv/bin/python
+# Python virtual environment to use
+VENV = Path.home() / "src" / "ART-AI-venv"
 
 # directory where nind-denoise is located
-NIND_DENOISE_DIR=$HOME/src/nind-denoise
-
-export PATH=$HOME/.local/bin:/opt/local/bin:/usr/local/bin:$PATH
-ART_CLI=ART-cli
-
-#############################################################################
+NIND_DENOISE_DIR = Path.home() / "src" / "nind-denoise"
 ```
 
 #### Testing that it works
@@ -78,24 +89,27 @@ Follow the instructions on the [https://github.com/rymuelle/RawForge](GitHub Raw
 creating a suitable Python virtual env (below, I will assume 
 it is called `rawforge-venv`, and is installed in `$HOME/src`;
  if your setup is different, adjust accordingly).
-The `rawforge_denoise.sh` requires also [ExifTool](http://exiftool.org), 
+The `rawforge_denoise.py` requires also [ExifTool](http://exiftool.org), 
 so make sure it is available on your `$PATH`.
 
 #### ART user command configuration
 
-Open `rawforge_denoise.sh` and edit the variables at the beginning of the file to adapt to your environment:
+Open `rawforge_denoise.py` and edit the settings at the beginning of the file to adapt to your environment:
 
-```bash
-# select the device to use for denoising (cuda, mps, cpu, ...)
-DEVICE=mps
+```python
+# Python virtual environment where RawForge is installed
+VENV = Path.home() / "src" / "rawforge-venv"
 
-# Python interpreter to use
-PYTHON=$HOME/src/rawforge-venv/bin/python
+# RawForge model to use
+MODEL = "TreeNetDenoiseLight"
 
-export PATH=$HOME/.local/bin:/opt/local/bin:/usr/local/bin:$PATH
-
-#############################################################################
+# select the device to use for denoising (cuda, mps, cpu, ...); by default,
+# RawForge picks the best one
+DEVICE = None
 ```
+
+The script runs itself with the Python interpreter of this virtual environment
+(with the `--worker` option) to perform the actual denoising.
 
 #### Testing that it works
 
@@ -105,6 +119,109 @@ If everything is configured properly, activating it should result in an image
  (when invoked on a file called `FILENAME.raw`).
 
 
+### greycard-denoise-raw configuration
+
+[greycard-denoise-raw](https://github.com/agriggio/greycard-denoise-raw)
+is a small stand-alone Python tool that runs the AI-based denoiser of
+[greycard](https://github.com/jessolmstead/greycard) (by Jess Olmstead)
+on a raw file.
+The network works directly on the raw Bayer data,
+so it performs demosaicing and denoising in a single step,
+and it does not need to be told the ISO or the noise level of the image
+(the noise model is estimated from the image itself).
+The result is saved as a *linear DNG* file,
+which ART opens like any other raw file:
+the camera-specific matrices and DCP profiles are applied as usual,
+and the rest of the processing is done by ART as for the original file.
+It supports Bayer sensors only (X-Trans is not supported).
+On my Apple Silicon Mac, a 15 MP image takes about 3 seconds
+using CoreML (about 12 seconds on the CPU).
+
+#### Installation
+
+1. clone the repository:
+
+   ```text
+   $ git clone --depth 1 https://github.com/agriggio/greycard-denoise-raw
+   ```
+
+2. create a Python virtual env named `.venv` inside the cloned directory
+   (the user command expects it there),
+   activate it, and install the required dependencies
+   (I'm using Python 3.12; a recent Python version for which
+   [rawpy](https://pypi.org/project/rawpy/) and
+   [onnxruntime](https://pypi.org/project/onnxruntime/) provide packages is needed):
+
+   ```text
+   $ cd greycard-denoise-raw
+   $ python -m venv .venv
+   $ . ./.venv/bin/activate
+   $ pip install numpy rawpy onnxruntime tifffile
+   ```
+
+   On macOS, onnxruntime uses CoreML out of the box.
+   On a machine with an NVIDIA GPU you can install `onnxruntime-gpu`
+   instead of `onnxruntime` (I could only test macOS and CPU,
+   so I cannot tell how well the other GPU backends work).
+   The project page also describes an alternative PyTorch backend.
+
+3. make sure that [ExifTool](http://exiftool.org) is available on your `$PATH`:
+   it is used to read the camera make and model
+   (needed to find the right camera profile)
+   and to copy the metadata of the original file (exposure, ISO, lens...) to the denoised one.
+
+The neural network (a 9 MB file) is downloaded automatically
+from [Hugging Face](https://huggingface.co/jessolmstead/greycard-denoise)
+the first time that the tool runs, and is stored in the `models` directory.
+Both the tool and the model are released under the GPL v3 or later.
+
+#### ART user command configuration
+
+Place `greycard_denoise.txt` and `greycard_denoise.py` in `$HOME/.config/ART/usercommands`,
+then open `greycard_denoise.py` and edit the settings at the beginning of the file to adapt to your environment:
+
+```python
+# directory of the greycard-denoise-raw project (its own virtualenv, in the
+# `.venv` subdirectory, is used)
+GREYCARD_DENOISE_RAW_DIR = Path.home() / "src" / "greycard-denoise-raw"
+
+# network size: fast, balanced or best
+MODEL = "balanced"
+
+# onnxruntime provider: auto, cpu, coreml, cuda, directml, ...
+PROVIDER = "auto"
+```
+
+The `MODEL` setting selects one of three networks of increasing size (and quality, and running time):
+`fast`, `balanced` and `best`.
+`PROVIDER` can be used to force a specific backend:
+`auto` picks the best one available.
+
+#### Testing that it works
+
+You should have a new user command called "AI denoise (greycard)".
+If everything is configured properly, activating it should result in an image
+`FILENAME-denoised.dng` generated in the current directory
+(when invoked on a file called `FILENAME.raw`).
+If the original file has an `.arp` sidecar,
+it is copied for the denoised image too (with the other denoising tools disabled).
+
+The command can also be used from a terminal,
+e.g. `python greycard_denoise_raw.py FILENAME.raw -o FILENAME-denoised.dng`:
+see the [project page](https://github.com/agriggio/greycard-denoise-raw)
+for all the available options
+(among them, the output can also be saved as a linear float32 TIFF file).
+
+A couple of things to be aware of:
+
+- the DNG file is saved with 16 bits per sample.
+  A DNG file with 32-bit floating-point samples can also be generated (`--dng-bits 32`),
+  but ART currently does not read those correctly;
+- the output is in the camera colour space with no white balance applied
+  (the as-shot white balance is stored in the DNG file),
+  so ART's "Camera" white balance setting gives the expected result.
+
+
 ## AI masking (Unix-like environments)
 
 We can use [SAM2](https://github.com/facebookresearch/sam2)
@@ -112,13 +229,13 @@ through its [SMART](https://github.com/artraweditor/SMART) GUI frontend
 to quickly generate masks of various subjects in the scene.
 
 Similarly to nind-denoise, we will integrate it with ART via the attached
-`smart_masking.txt` user command and `smart_masking.sh` companion script.
-Both should be placed in `$HOME/.config/ART/usercommands`.
+`smart_masking.txt` user command and `smart_masking.py` companion script
+(see above for how these are started and where to put them).
 The script needs to be modified to point to the installation directory of SMART,
 which can be installed as explained below.
 
 - [smart_masking.txt](resources/smart_masking.txt)
-- [smart_masking.sh](resources/smart_masking.sh)
+- [smart_masking.py](resources/smart_masking.py)
 
 
 ### SMART installation
@@ -150,23 +267,22 @@ or `"cpu"` otherwise (this might be slow though).
 
 ### ART user command configuration
 
-Open `smart_masking.sh` and edit the variables at the beginning of the file
+Open `smart_masking.py` and edit the settings at the beginning of the file
 to adapt to your environment:
 
-```bash
-#!/bin/bash
-
-# Python interpreter to use
-PYTHON=$HOME/src/ART-AI-venv/bin/python
+```python
+# Python virtual environment to use
+VENV = Path.home() / "src" / "ART-AI-venv"
 
 # directory where SMART is located
-SMART_DIR=$HOME/src/SMART
-
-export PATH=$HOME/.local/bin:/opt/local/bin:/usr/local/bin:$PATH
-ART_CLI=ART-cli
-
-#############################################################################
+SMART_DIR = Path.home() / "src" / "SMART"
 ```
+
+The user command passes two options to the script (see the `Command` line in `smart_masking.txt`):
+`-f` makes ART export a downscaled image, which is faster
+(remove it to work on the full-resolution image, which is slower but keeps the mask edge artifacts to a minimum),
+and `--keep` leaves the exported JPEG file next to the original and does not wait for SMART to exit
+(without it, SMART runs in the foreground and the JPEG file is deleted when SMART exits).
 
 ### Testing that it works
 
