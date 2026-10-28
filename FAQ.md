@@ -36,6 +36,7 @@
 [LightZone](https://lightzoneproject.org),
 [rawproc](https://github.com/butcherg/rawproc),
 [RapidRAW](https://www.getrapidraw.com/), [RawTherapee](http://rawtherapee.org) itself,
+[SafeLight](https://anthonyreimche.github.io/SafeLight/site/),
 or [vkdt](https://jo.dreggn.org/vkdt/).
 
 - **Let's say I want to use it anyway. Is there any support for it?**
