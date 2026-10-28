@@ -30,7 +30,13 @@
   However, we often collaborate with the RawTherapee devs, exchanging ideas and code. We might also meet for drinks when there is a chance.
 
 - **Back to ART then. Why should I use it?**
-  You probably shouldn't. If you are looking for an excellent, free raw processing tool, you can have a look at (in alphabetical order) [darktable](https://www.darktable.org), [Filmulator](https://filmulator.org), [LightZone](https://lightzoneproject.org), [PhotoFlow](https://aferrero2707.github.io/PhotoFlow/), [rawproc](https://github.com/butcherg/rawproc), [RapidRAW](https://github.com/CyberTimon/RapidRAW), [RawTherapee](http://rawtherapee.org) itself, or [vkdt](https://jo.dreggn.org/vkdt/).
+  You probably shouldn't. If you are looking for an excellent, free raw processing tool, you can have a look at (in alphabetical order
+[CalibRaw](https://calibraw.dueckis.de/), [darktable](https://www.darktable.org), [Filmulator](https://filmulator.org),
+[greycard](https://greycard.org/),
+[LightZone](https://lightzoneproject.org),
+[rawproc](https://github.com/butcherg/rawproc),
+[RapidRAW](https://www.getrapidraw.com/), [RawTherapee](http://rawtherapee.org) itself,
+or [vkdt](https://jo.dreggn.org/vkdt/).
 
 - **Let's say I want to use it anyway. Is there any support for it?**
   As most open source projects, ART *comes with no warranty* whatsoever.
