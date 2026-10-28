@@ -320,18 +320,20 @@ void ART_fill_pipette(varying float r, varying float g, varying float b,
 Pipettes are available both in the Film Simulation tool and in the LUT mode of
 the Color Correction tool (where each region has its own pipettes).
 
-### Spatial guide
+### Spatial guides
 
 By default `ART_main` is called on each pixel independently, so a script cannot
 know anything about the neighbourhood of the pixel it is processing. A script
-can however ask ART for a *guide*: an additional input channel carrying
+can however ask ART for one or more *guides*: additional input channels carrying
 spatial information, which makes it possible to implement local (e.g. detail-preserving)
-operations such as local tone mapping.
+operations such as local tone mapping, or to make a colour operation act coherently
+on neighbouring pixels instead of amplifying the noise of each of them.
 
-To use it, add a fourth `varying` input argument of type `float`, right after
+To use them, add up to three `varying` input arguments of type `float`, right after
 `b` and before the output arguments:
 
 ```C
+// @ART-guides: ["Y"]
 void ART_main(varying float r, varying float g, varying float b,
               varying float guide,
               output varying float r_out, output varying float g_out, output varying float b_out,
@@ -341,24 +343,45 @@ void ART_main(varying float r, varying float g, varying float b,
 }
 ```
 
-The presence of the guide is detected by position: if the fourth argument is
-`varying` it is the guide (and it must be a `float`); if it is an `output` argument, the script has no guide.
+The guides are detected by position: the `varying` arguments following `r`, `g` and `b` are guides
+(and they must be `float`s), while the first `output` argument starts the outputs.
+The `@ART-guides` tag says how each guide is computed. Its value is a list of names in
+[JSON](https://www.json.org/) format, one for each guide, in the same order as the arguments of `ART_main`.
+The available guides are:
 
-The guide is an edge-aware spatial smoothing of the luminance of the input image,
-computed with the same method as the "Tone Equalizer" tool (regularization 4).
-In other words, it is a blurred version of the luminance that follows the
-edges of the image, so it contains the local brightness of the scene
-without the fine detail. A few things to keep in mind:
+| name | guide |
+|------|-------|
+| `"Y"` | The luminance of the input image, smoothed with an edge-aware filter (the same as the one used by the Tone Equalizer tool, with regularization 4). It is a *linear* luminance, normalized as in the Tone Equalizer, so that `0.18` corresponds to middle grey. |
+| `"C"` | A chroma-like quantity: the smoothed (edge-aware) chroma `cz` of the pixels in the [JzAzBz](https://opg.optica.org/oe/fulltext.cfm?uri=oe-25-13-15131) colour space. |
+| `"H"` | A hue-like quantity: the smoothed (edge-aware) hue angle `hz` of the pixels in the JzAzBz colour space, in radians, in the range (-π, π]. Colourful neighbours count more than grey ones, and the average is taken in a way that works across the wrap point of the angle. Note that it is an angle: differences between hues must be wrapped by the script. |
 
-- the guide is a *linear* luminance, normalized as in the Tone Equalizer, so
-  that `0.18` corresponds to middle grey;
-- the guide is **not** expressed in the colour space of the script
+The same guide cannot be listed twice. If the tag is missing, a script with exactly one guide gets the `"Y"` guide;
+a script with more than one guide must use the tag. The number of names in the tag must match the number of guides taken by `ART_main`.
+
+For example, a script using all the guides looks like this:
+
+```C
+// @ART-guides: ["Y", "C", "H"]
+void ART_main(varying float r, varying float g, varying float b,
+              varying float guide_y, varying float guide_c, varying float guide_h,
+              output varying float r_out, output varying float g_out, output varying float b_out)
+{
+    // ...
+}
+```
+
+A few things to keep in mind:
+
+- the guides are **not** expressed in the colour space of the script
   (see `@ART-colorspace`), but in the working profile of ART;
-- it is computed once from the input of the tool, before any of its regions
-  is applied (in the Color/Tone Correction tool).
+- they are computed once from the input of the tool, before any of its regions
+  is applied (in the Color/Tone Correction tool); only the guides that are needed are computed.
 
-A typical use is to compute a gain from the guide and apply it to `r`, `g`, `b`:
-since the guide is smooth, the local contrast of the pixel is preserved.
+A typical use of the `"Y"` guide is to compute a gain from the guide and apply it to `r`, `g`, `b`:
+since the guide is smooth, the gain varies slowly across the image, and the
+local contrast of the pixel is preserved. Computing the gain from the luminance
+of the pixel itself, instead, behaves like a tone curve, which also compresses
+the local contrast.
 For example, here is a simple script that lifts the shadows depending on the local brightness:
 
 ```C
@@ -370,12 +393,7 @@ void ART_main(varying float r, varying float g, varying float b,
               float amount)
 {
     // the darker the neighbourhood, the stronger the gain
-    float t = guide / 0.18;
-    if (t < 0.0) {
-        t = 0.0;
-    } else if (t > 1.0) {
-        t = 1.0;
-    }
+    const float t = clamp(guide / 0.18, 0.0, 1.0);
     const float gain = pow(2, amount * (1.0 - t));
     r_out = r * gain;
     g_out = g * gain;
@@ -383,20 +401,24 @@ void ART_main(varying float r, varying float g, varying float b,
 }
 ```
 
+The `"C"` and `"H"` guides are useful for colour operations that move the hue or the chroma of the pixels
+(for example to pull the colours toward a palette): computing the amount of the change from the smoothed hue and chroma,
+instead of from the values of each pixel, avoids that noisy pixels get shifted in different directions, which would produce visible artifacts.
+
 Limitations:
 
-- scripts that use a guide are never converted to an intermediate 3dLUT, since
+- scripts that use guides are never converted to an intermediate 3dLUT, since
   their result does not depend only on the colour of the pixel. Therefore, any
   `@ART-lut` tag is ignored (a warning is printed in verbose mode), and the script is always applied
   per pixel, which can be slower;
 - guides are available only in the tools that provide them, i.e. the Color/Tone
   Correction and the Film Simulation tools;
-- if `ART_main` takes a guide, then `ART_fill_pipette` (see above) must take it too,
-  in the same position, i.e. after `b` and before the output arguments:
+- if `ART_main` takes guides, then `ART_fill_pipette` (see above) must take them too,
+  in the same positions, i.e. after `b` and before the output arguments:
 
   ```C
   void ART_fill_pipette(varying float r, varying float g, varying float b,
-                        varying float guide,
+                        varying float guide_y, varying float guide_h,
                         output varying float r_out, output varying float g_out, output varying float b_out,
                         int curve_id)
   ```
