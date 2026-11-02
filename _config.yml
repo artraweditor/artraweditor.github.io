@@ -11,6 +11,7 @@ include:
   - BuildWindows.md
   - Customformats.md
   - FAQ.md
+  - GUIPerformanceTuning.md
   - Hdroutput.md
   - index.md
   - Localediting.md

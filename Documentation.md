@@ -38,6 +38,8 @@ title: Documentation
 
 - [Using custom working profiles](CustomWorkingProfiles)
 
+- [Tuning the performance of the GUI](GUIPerformanceTuning)
+
 ### Other documentation sources (not maintained by the project)
 
 - [An introduction to ART (external blog post)](https://yap.bozart.eu/articles/art/intro/index.html)
