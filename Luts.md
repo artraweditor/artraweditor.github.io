@@ -352,7 +352,7 @@ The available guides are:
 | name | guide |
 |------|-------|
 | `"Y"` | The luminance of the input image, smoothed with an edge-aware filter (the same as the one used by the Tone Equalizer tool, with regularization 4). It is a *linear* luminance, normalized as in the Tone Equalizer, so that `0.18` corresponds to middle grey. |
-| `"C"` | A chroma-like quantity: the smoothed (edge-aware) chroma `cz` of the pixels in the [JzAzBz](https://opg.optica.org/oe/fulltext.cfm?uri=oe-25-13-15131) colour space. |
+| `"C"` | A chroma-like quantity: the smoothed (edge-aware) chroma `cz` of the pixels in the [JzAzBz](https://opg.optica.org/oe/fulltext.cfm?uri=oe-25-13-15131) colour space, multiplied by 15 so that it is `0` for neutral colours and about `1` for strongly saturated ones. |
 | `"H"` | A hue-like quantity: the smoothed (edge-aware) hue angle `hz` of the pixels in the JzAzBz colour space, in radians, in the range (-π, π]. Colourful neighbours count more than grey ones, and the average is taken in a way that works across the wrap point of the angle. Note that it is an angle: differences between hues must be wrapped by the script. |
 
 The same guide cannot be listed twice. If the tag is missing, a script with exactly one guide gets the `"Y"` guide;
@@ -404,6 +404,23 @@ void ART_main(varying float r, varying float g, varying float b,
 The `"C"` and `"H"` guides are useful for colour operations that move the hue or the chroma of the pixels
 (for example to pull the colours toward a palette): computing the amount of the change from the smoothed hue and chroma,
 instead of from the values of each pixel, avoids that noisy pixels get shifted in different directions, which would produce visible artifacts.
+
+The `"C"` guide is scaled so that it is `0` for neutral colours, around `0.1`–`0.3` for typical skin tones and other moderately coloured areas,
+and close to `1` for strongly saturated colours (it can go somewhat above `1` for very saturated colours, especially with a wide-gamut working profile).
+Weights such as `c / (c + k)`, used to protect neutral areas, work well with `k` of the order of `0.01`–`0.05`.
+
+Note that this scaling is applied on top of the plain JzAzBz chroma: the `"C"` guide is **15 times** the `cz` of the same colour.
+This matters if a script wants to compare the guide with the chroma of the pixel itself, computed from its `r`, `g`, `b` values
+(for example with `rgb2jzczhz` from `_artlib.ctl`, which returns the unscaled `cz`):
+either multiply that chroma by 15, or divide the guide by 15, before comparing them or mixing them in the same formula
+(e.g. `c_pixel * ART_GUIDE_C_SCALE / (guide_c + k)`).
+The factor is available as the constant `ART_GUIDE_C_SCALE` (currently `15.0`) in `_artlib.ctl`,
+so scripts that `import "_artlib";` should use it instead of hardcoding the number. Forgetting to do so makes the guide look 15 times too large,
+and a pixel in a perfectly flat area will appear much less chromatic than its own neighbourhood.
+Also keep in mind that, even with the same scale, the two values are not expected to be identical:
+the guide is an edge-aware average over a neighbourhood and not the value of the pixel,
+it is computed in the working profile of ART (while `r`, `g`, `b` are in the colour space of the script, see `@ART-colorspace`),
+and it is computed from the input of the tool, before any of its regions is applied.
 
 Limitations:
 
