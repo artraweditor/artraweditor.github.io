@@ -17,6 +17,7 @@ When available, they can be used in both the "Film Simulation" and in the the "C
 **Contents:**
 - [CLF LUTs](#clf)
 - [CTL scripts](#ctl)
+- [Controlling the list and order of LUTs](#artlist)
 
 
 ## CLF LUTs {#clf}
@@ -532,3 +533,54 @@ For example, by adding:
 to `expcomp.ctl`, we now get a nicer name in the GUI:
 
 ![ART CTL plugin](resources/ctl-example-plugin-2.png)
+
+
+## Controlling the list and order of LUTs {#artlist}
+
+By default, the LUTs and CTL scripts found in the directories scanned by ART are listed sorted by name.
+Since ART version 1.26.11, this can be customized by putting in a directory a text file called `ARTlist.txt`
+(the name is matched case-insensitively, so e.g. `artlist.txt` works too).
+If present, the file determines which LUTs are shown in the GUI, and in which order.
+If no `ARTlist.txt` is found, the default behaviour is used.
+
+The file contains one entry per line. Anything starting with a `#` and up to the end of the line is ignored,
+and so are blank lines. For example:
+
+```
+# my favourite looks
+ART_agx_film.json
+warm_look.clfz     # trailing comments are fine
+```
+
+Entries that do not exist are skipped, as are duplicates.
+Only the files and directories listed are shown: anything else in the directory is hidden.
+
+### CTL scripts in the Color/Tone Correction tool
+
+The `ARTlist.txt` file is looked for in the `ctlscripts` subdirectory of the ART config folder, and in the `ctlscripts` folder shipped with ART.
+Each entry is the name of a file in the same directory as the `ARTlist.txt` file (or an absolute path).
+The listed scripts are shown in the given order, before the scripts coming from directories without an `ARTlist.txt` (which are sorted by name as usual).
+
+### The Film Simulation tool
+
+In the Film Simulation tool, `ARTlist.txt` is only looked for in the top-level directories scanned by ART
+(i.e. the ones shipped with ART and the LUTs directory set in "Preferences"), and not in their subdirectories.
+Entries are paths relative to the top-level directory, and can refer to files in subdirectories,
+for example:
+
+```
+ART_agx_film.json
+my_look.clf
+negatives/kodak_portra.clf
+negatives/fuji_400h.clf
+slides/velvia.clf
+negatives/ilford.clf
+```
+
+Files in subdirectories are shown in a separate group (submenu) named after the subdirectory.
+Groups appear in the position of their first entry in the list, and the files inside each group follow the order in the list.
+In the example above, the menu will show `ART_agx_film`, `my_look`, then the group `negatives` (with Portra, 400H and Ilford, in this order),
+and finally the group `slides`.
+An entry naming a subdirectory (e.g. `slides`) adds a group with all the files of that directory, sorted by name.
+Nested subdirectories (e.g. `a/b/file.clf`) give nested groups.
+`ARTlist.txt` files inside subdirectories are ignored.
