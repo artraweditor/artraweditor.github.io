@@ -1,5 +1,0 @@
-[ART UserCommand]
-Label=AI denoise (greycard)
-Command=python3 ./greycard_denoise.py
-NumArgs=1
-FileType=raw

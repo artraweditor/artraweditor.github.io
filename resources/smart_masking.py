@@ -12,15 +12,25 @@ Usage: smart_masking.py [-f] [--keep] FILE
               and do not wait for SMART to exit
 
 This script only needs the Python standard library: SMART itself runs in the
-Python virtual environment given below."""
+Python virtual environment given below.
+
+The code shared by all the Python user commands is in art_usercommand.py,
+next to this file."""
 
 import argparse
 import os
-import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
+
+from art_usercommand import (
+    last_lines,
+    run,
+    run_with_progress,
+    save_result,
+    show_error,
+    venv_python,
+)
 
 # Python virtual environment to use
 VENV = Path.home() / "src" / "ART-AI-venv"
@@ -29,110 +39,6 @@ VENV = Path.home() / "src" / "ART-AI-venv"
 SMART_DIR = Path.home() / "src" / "SMART"
 
 ART_CLI = "ART-cli"
-
-##############################################################################
-# Helpers (the same in all the ART user commands written in Python)
-
-
-def add_to_path():
-    """Make it easier to find tools that ART does not provide (exiftool...),
-    e.g. when ART is started from the macOS Finder, where $PATH is very short.
-    ART itself puts its own directory (ART-cli, ART-dialogs) at the front."""
-    extra = [
-        Path.home() / ".local" / "bin",
-        Path("/opt/homebrew/bin"),
-        Path("/opt/local/bin"),
-        Path("/usr/local/bin"),
-    ]
-    parts = [os.environ["PATH"]] if os.environ.get("PATH") else []
-    parts += [str(d) for d in extra if d.is_dir()]
-    os.environ["PATH"] = os.pathsep.join(parts)
-
-
-def show_error(text):
-    text = text.strip() or "Unknown error"
-    try:
-        subprocess.run(
-            ["ART-dialogs", "--error", "--no-markup", "--text=" + text]
-        )
-    except OSError:
-        print(text, file=sys.stderr)
-
-
-def last_lines(path, count=1):
-    """The last non-empty lines of a text file (e.g. the error output)."""
-    try:
-        with open(path, errors="replace") as f:
-            lines = [line.rstrip() for line in f if line.strip()]
-    except OSError:
-        return ""
-    return "\n".join(lines[-count:])
-
-
-def run_with_progress(cmd, errfile, text, width=None, pulsate=False):
-    """Run `cmd`, showing a progress dialog driven by its standard output
-    (percentages, one per line), and saving its standard error to `errfile`.
-    Returns the exit status of `cmd`, or None if the user cancelled."""
-    dialog = ["ART-dialogs"]
-    if width:
-        dialog.append("--width=%d" % width)
-    dialog += ["--progress", "--auto-close", "--text=" + text]
-    if pulsate:
-        dialog.append("--pulsate")
-    with open(errfile, "wb") as err:
-        worker = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
-        try:
-            dlg = subprocess.Popen(dialog, stdin=worker.stdout)
-        except OSError:
-            worker.kill()
-            worker.wait()
-            raise
-        worker.stdout.close()
-        if dlg.wait() != 0:
-            # the dialog exits with a non-zero status if the user cancelled
-            worker.terminate()
-            worker.wait()
-            return None
-        return worker.wait()
-
-
-def unique_path(stem, suffix):
-    """`stem+suffix`, or `stem-1+suffix`, `stem-2+suffix`... if it exists."""
-    path = Path(stem + suffix)
-    i = 1
-    while path.exists():
-        path = Path("%s-%d%s" % (stem, i, suffix))
-        i += 1
-    return path
-
-
-def venv_python(venv):
-    """The Python interpreter of a virtual environment (Unix or Windows)."""
-    for rel in ("bin/python", "Scripts/python.exe"):
-        python = Path(venv) / rel
-        if python.exists():
-            return str(python)
-    raise RuntimeError(
-        "Python interpreter not found in %s: please check the settings at "
-        "the beginning of %s" % (venv, Path(__file__).name)
-    )
-
-
-def write_sidecar(src, dst, extra):
-    """Copy the sidecar `src` to `dst`, appending the settings in `extra`."""
-    shutil.copyfile(src, dst)
-    with open(dst, "a", encoding="utf-8", newline="\n") as f:
-        f.write(extra)
-
-
-def run(main):
-    add_to_path()
-    try:
-        main(sys.argv[1:])
-    except Exception as e:
-        show_error("%s: %s" % (type(e).__name__, e))
-        sys.exit(1)
-
 
 # turn off cropping and modules coming later in the pipeline
 PROFILE = """[Version]
@@ -192,8 +98,7 @@ def main(args):
                 last_lines(err, 5) or "ART-cli did not produce any output"
             )
             return
-        dest = unique_path(str(raw.with_suffix("")) + "_SMART", ".jpg")
-        shutil.move(str(jpg), str(dest))
+        dest = save_result(raw, jpg, "_SMART", ".jpg")
 
     smart = [python, str(SMART_DIR / "src" / "main.py"), str(dest)]
     if opts.keep:

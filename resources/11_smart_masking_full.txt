@@ -1,0 +1,4 @@
+[ART UserCommand]
+Label=AI masking (SMART, full size)
+Command=python3 ./smart_masking.py
+NumArgs=1

@@ -1,0 +1,5 @@
+[ART UserCommand]
+Label=AI healing (SMART)
+Command=python3 ./smart_healing.py --nonraw
+NumArgs=1
+FileType=nonraw

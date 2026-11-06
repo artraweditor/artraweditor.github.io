@@ -1,274 +1,114 @@
 # ART and AI-based tools
 
-Some people asked about integration of AI-based tools in ART.
-While a full integration won't likely happen in the fureseeable future
-(I would recommend to people who consider this critical to take a look at [RapidRAW](https://github.com/CyberTimon/RapidRAW)),
-some level of integration of both AI-based masking and AI-based denoising is already possible,
-thanks to the use of some open source projects to do the heavy work,
-and some glue code in the form of [ART user commands](https://artraweditor.github.io/Usercommands).
-In this article,
-I'd like to show how to do that for Unix-based systems
-(and possibly also on windows using msys2 or WSL2).
+*A previous version of this page can be found [here](OLDAItools).*
 
-## AI-based denoising
+ART does not include AI-based tools, but some of them can be used together with it,
+thanks to [SMART](https://github.com/artraweditor/SMART),
+a small companion application that provides three AI tools with a graphical interface
+(and, for denoising, also a command line),
+and to [ART user commands](Usercommands), which make SMART available from the
+context menu of the file browser.
 
-We can use [nind-denoise](https://github.com/trougnouf/nind-denoise),
-[RawForge](https://github.com/rymuelle/RawForge)
-or [greycard-denoise-raw](https://github.com/agriggio/greycard-denoise-raw)
-to perform advanced noise reduction with neural networks.
-In order to integrate them with ART, we can use the attached user commands and companion scripts:
+## What SMART does
 
-- [nind_denoise.txt](resources/nind_denoise.txt) and [nind_denoise_raw.py](resources/nind_denoise_raw.py) for "nind-denoise"; or
-- [rawforge_denoise.txt](resources/rawforge_denoise.txt) and [rawforge_denoise.py](resources/rawforge_denoise.py) for "RawForge"; or
-- [greycard_denoise.txt](resources/greycard_denoise.txt) and [greycard_denoise.py](resources/greycard_denoise.py) for "greycard-denoise-raw".
+SMART runs open-source neural networks on an image, and saves the result in
+a file that ART can then load. It has three modes:
 
-The scripts show progress bars and error messages with
-[`ART-dialogs`](Usercommands#showing-dialogs-art-dialogs),
-which is included with ART (since version 1.26.11)
-and is found automatically when the scripts are run as ART user commands.
+| Mode | What it does | Network | Input |
+|---|---|---|---|
+| **Masking** (`--mode mask`) | Click on a subject (*shift + left click* to include points, *shift + right click* to exclude them) to get a mask of it, saved as a PNG file that can be loaded in ART as an external mask | [SAM 2.1](https://github.com/facebookresearch/sam2) | an image exported from ART |
+| **Healing** (`--mode heal`) | Paint over what you want to remove (dust, objects, blemishes): the area is filled with plausible content ("generative fill") | LaMa inpainting, ported from [greycard](https://github.com/jessolmstead/greycard) | a linear image exported from ART, or any non-raw image |
+| **Denoising** (`--mode denoise`) | Removes noise from the raw data, with a before/after view to compare the results | greycard's raw denoiser (Bayer sensors) or the TreeNet models of [RawForge](https://github.com/rymuelle/RawForge) (other sensors), each at three quality levels: *fast*, *balanced*, *best* | a DNG written by `ART-cli` |
 
-The companion scripts are written in Python, so that they are not tied to a specific platform.
-They only use the Python standard library, so any Python 3 (3.8 or later) will do to run them:
-the AI tools themselves run in their own virtual environments, as explained below.
-The `.txt` files start the scripts with the `python3` command:
-if your Python interpreter is called differently (e.g. `python` on Windows),
-edit the `Command` line accordingly.
-(I could only test the scripts on macOS, but nothing in them should be specific to it.)
+The denoiser works on the raw data, before any colour processing.
+The result is saved as a linear DNG (or as a linear float TIFF) that ART opens like a raw file,
+with its camera matrix, white balance and your usual sidecar settings.
+In the before/after view the image is shown with only the display transform applied
+(white balance, camera matrix, sRGB encoding): no tone curve and no exposure change.
 
-All the files should be placed in `$HOME/.config/ART/usercommands`
-(`%LOCALAPPDATA%\ART\usercommands` on Windows).
-The settings at the beginning of the scripts need to be modified to point to the installation directory of 
-the respective denoiser.
-Some installation instructions appear below.
+The denoiser can also be used without the GUI, e.g. in scripts:
+see `SMART --mode denoise --cli` and the [SMART documentation](https://github.com/artraweditor/SMART).
 
+## Installing SMART
 
-### nind-denoise configuration
+You can use the pre-built binaries from the [releases page](https://github.com/artraweditor/SMART/releases)
+of SMART on GitHub, or install it from the source code as explained below.
 
-#### Installation
+The instructions below are for Unix-like systems (Linux, macOS), and I could only test them on macOS.
+The integration with ART is done with Python scripts, so nothing should be specific to those systems,
+but the details (paths, name of the interpreter) may differ on Windows.
 
-1. clone the repository (I'm using my fork of the original code, whose only change is to allow more devices to be selected, other than NVida-based GPUs or CPU as the original):
-
-   ```text
-   $ git clone --depth 1 https://github.com/agriggio/nind-denoise
-   ```
-
-2. create a Python virtual env, activate it, and install the required dependencies:
-
-   ```text
-   $ python -m venv ART-AI-venv
-   $ . ./ART-ai-venv/bin/activate
-   $ pip install torch torchvision ConfigArgParse opencv-python pyyaml piqa 
-   ```
-
-#### ART user command configuration
-
-Open `nind_denoise_raw.py` and edit the settings at the beginning of the file to adapt to your environment:
-
-```python
-# select the device to use for denoising (cuda, mps, cpu, ...)
-DEVICE = "mps"
-
-# Python virtual environment to use
-VENV = Path.home() / "src" / "ART-AI-venv"
-
-# directory where nind-denoise is located
-NIND_DENOISE_DIR = Path.home() / "src" / "nind-denoise"
-```
-
-#### Testing that it works
-
-You should have a new user command called "AI denoise (nind-denoise)". If everything is configured properly, activating it should result in an image `FILENAME-denoised.tif` generated in the current directory (when invoked on a file called `FILENAME.raw`). Here's a quick video demo:
-
-- [AI denoising demo](demos/ART-AI-denoise.mp4)
-
-### RawForge configuration
-
-#### Installation
-
-Follow the instructions on the [https://github.com/rymuelle/RawForge](GitHub RawForge page), 
-creating a suitable Python virtual env (below, I will assume 
-it is called `rawforge-venv`, and is installed in `$HOME/src`;
- if your setup is different, adjust accordingly).
-The `rawforge_denoise.py` requires also [ExifTool](http://exiftool.org), 
-so make sure it is available on your `$PATH`.
-
-#### ART user command configuration
-
-Open `rawforge_denoise.py` and edit the settings at the beginning of the file to adapt to your environment:
-
-```python
-# Python virtual environment where RawForge is installed
-VENV = Path.home() / "src" / "rawforge-venv"
-
-# RawForge model to use
-MODEL = "TreeNetDenoiseLight"
-
-# select the device to use for denoising (cuda, mps, cpu, ...); by default,
-# RawForge picks the best one
-DEVICE = None
-```
-
-The script runs itself with the Python interpreter of this virtual environment
-(with the `--worker` option) to perform the actual denoising.
-
-#### Testing that it works
-
-You should have a new user command called "AI denoise (RawForge)". 
-If everything is configured properly, activating it should result in an image 
-`FILENAME-denoised.dng` generated in the current directory
- (when invoked on a file called `FILENAME.raw`).
-
-
-### greycard-denoise-raw configuration
-
-[greycard-denoise-raw](https://github.com/agriggio/greycard-denoise-raw)
-is a small stand-alone Python tool that runs the AI-based denoiser of
-[greycard](https://github.com/jessolmstead/greycard) (by Jess Olmstead)
-on a raw file.
-The network works directly on the raw Bayer data,
-so it performs demosaicing and denoising in a single step,
-and it does not need to be told the ISO or the noise level of the image
-(the noise model is estimated from the image itself).
-The result is saved as a *linear DNG* file,
-which ART opens like any other raw file:
-the camera-specific matrices and DCP profiles are applied as usual,
-and the rest of the processing is done by ART as for the original file.
-It supports Bayer sensors only (X-Trans is not supported).
-On my Apple Silicon Mac, a 15 MP image takes about 3 seconds
-using CoreML (about 12 seconds on the CPU).
-
-#### Installation
-
-1. clone the repository:
-
-   ```text
-   $ git clone --depth 1 https://github.com/agriggio/greycard-denoise-raw
-   ```
-
-2. create a Python virtual env named `.venv` inside the cloned directory
-   (the user command expects it there),
-   activate it, and install the required dependencies
-   (I'm using Python 3.12; a recent Python version for which
-   [rawpy](https://pypi.org/project/rawpy/) and
-   [onnxruntime](https://pypi.org/project/onnxruntime/) provide packages is needed):
-
-   ```text
-   $ cd greycard-denoise-raw
-   $ python -m venv .venv
-   $ . ./.venv/bin/activate
-   $ pip install numpy rawpy onnxruntime tifffile
-   ```
-
-   On macOS, onnxruntime uses CoreML out of the box.
-   On a machine with an NVIDIA GPU you can install `onnxruntime-gpu`
-   instead of `onnxruntime` (I could only test macOS and CPU,
-   so I cannot tell how well the other GPU backends work).
-   The project page also describes an alternative PyTorch backend.
-
-3. make sure that [ExifTool](http://exiftool.org) is available on your `$PATH`:
-   it is used to read the camera make and model
-   (needed to find the right camera profile)
-   and to copy the metadata of the original file (exposure, ISO, lens...) to the denoised one.
-
-The neural network (a 9 MB file) is downloaded automatically
-from [Hugging Face](https://huggingface.co/jessolmstead/greycard-denoise)
-the first time that the tool runs, and is stored in the `models` directory.
-Both the tool and the model are released under the GPL v3 or later.
-
-#### ART user command configuration
-
-Place `greycard_denoise.txt` and `greycard_denoise.py` in `$HOME/.config/ART/usercommands`,
-then open `greycard_denoise.py` and edit the settings at the beginning of the file to adapt to your environment:
-
-```python
-# directory of the greycard-denoise-raw project (its own virtualenv, in the
-# `.venv` subdirectory, is used)
-GREYCARD_DENOISE_RAW_DIR = Path.home() / "src" / "greycard-denoise-raw"
-
-# network size: fast, balanced or best
-MODEL = "balanced"
-
-# onnxruntime provider: auto, cpu, coreml, cuda, directml, ...
-PROVIDER = "auto"
-```
-
-The `MODEL` setting selects one of three networks of increasing size (and quality, and running time):
-`fast`, `balanced` and `best`.
-`PROVIDER` can be used to force a specific backend:
-`auto` picks the best one available.
-
-#### Testing that it works
-
-You should have a new user command called "AI denoise (greycard)".
-If everything is configured properly, activating it should result in an image
-`FILENAME-denoised.dng` generated in the current directory
-(when invoked on a file called `FILENAME.raw`).
-If the original file has an `.arp` sidecar,
-it is copied for the denoised image too (with the other denoising tools disabled).
-
-The command can also be used from a terminal,
-e.g. `python greycard_denoise_raw.py FILENAME.raw -o FILENAME-denoised.dng`:
-see the [project page](https://github.com/agriggio/greycard-denoise-raw)
-for all the available options
-(among them, the output can also be saved as a linear float32 TIFF file).
-
-A couple of things to be aware of:
-
-- the DNG file is saved with 16 bits per sample.
-  A DNG file with 32-bit floating-point samples can also be generated (`--dng-bits 32`),
-  but ART currently does not read those correctly;
-- the output is in the camera colour space with no white balance applied
-  (the as-shot white balance is stored in the DNG file),
-  so ART's "Camera" white balance setting gives the expected result.
-
-
-## AI masking (Unix-like environments)
-
-We can use [SAM2](https://github.com/facebookresearch/sam2)
-through its [SMART](https://github.com/artraweditor/SMART) GUI frontend
-to quickly generate masks of various subjects in the scene.
-
-Similarly to nind-denoise, we will integrate it with ART via the attached
-`smart_masking.txt` user command and `smart_masking.py` companion script
-(see above for how these are started and where to put them).
-The script needs to be modified to point to the installation directory of SMART,
-which can be installed as explained below.
-
-- [smart_masking.txt](resources/smart_masking.txt)
-- [smart_masking.py](resources/smart_masking.py)
-
-
-### SMART installation
-
-1. clone the repository:
+1. Clone the repository:
 
    ```text
    $ git clone --depth 1 https://github.com/artraweditor/SMART
    ```
 
-2. Activate the previously-created Python virtual env, and install the required dependencies:
+2. Create a Python virtual environment, activate it, and install the dependencies
+   (the same environment can be shared with other AI tools):
 
    ```text
-   $ . ./ART-ai-venv/bin/activate
-   $ pip install -r SMART/requirements.txt 
+   $ python -m venv ART-AI-venv
+   $ . ./ART-AI-venv/bin/activate
+   $ pip install -r SMART/requirements.txt
    ```
 
-3. Download one of the SAM 2 model checkpoints from [https://github.com/facebookresearch/sam2?tab=readme-ov-file#download-checkpoints](https://github.com/facebookresearch/sam2?tab=readme-ov-file#download-checkpoints), and put it in the `models/` directory of SMART.
+3. Run `python SMART/src/main.py --init-config` from a terminal
+   to create an initial configuration file.
+   The path to the file will be printed in output.
+   Edit it with a text editor, and set the `device` parameter to the device to use for computations:
+   `"cuda"` for a CUDA-capable GPU,
+   `"mps"` for the GPU on an ARM Apple machine,
+   or `"cpu"` otherwise (this might be slow though).
 
-4. Run `python src/main.py --init-config` from a terminal
-to create an initial configuration file.
-The path to the file will be printed in output.
-Edit the file with a text editor, and adapt the `model` and `device` parameters to your setup,
-where `model` should be the name of the SAM2 checkpoint to use,
-and `device` the device to use for computations:
-`"cuda"` for a CUDA-capable GPU,
-`"mps"` for the GPU on an ARM Apple machine,
-or `"cpu"` otherwise (this might be slow though).
+4. Download the models for the tools that you want to use. They are put in the `models/` directory of SMART:
 
-### ART user command configuration
+   ```text
+   $ python SMART/src/main.py --download-mask-model base_plus    # masking: tiny, small, base_plus or large
+   $ python SMART/src/main.py --download-heal-model              # healing
+   $ python SMART/src/main.py --download-denoise-model all       # denoising: fast, balanced, best, or all
+   ```
 
-Open `smart_masking.py` and edit the settings at the beginning of the file
-to adapt to your environment:
+   For masking, set also the `model` parameter in the configuration file to the name of the SAM 2 checkpoint
+   (`sam2.1_hiera_base_plus.pt` for the example above).
+   If a model is missing when SMART starts (or, for denoising, when you press the *Denoise* button),
+   SMART offers to download it.
+
+   The masking models are the largest ones (from about 150 MB to 900 MB; larger is better but slower),
+   the healing model is about 200 MB, and the denoising models range from a few MB to about 20 MB each.
+
+## Using SMART from ART
+
+The following user commands start SMART on the selected file from the context menu of the file browser
+(see [User Commands](Usercommands) for the general mechanism).
+They first call `ART-cli` to prepare the image in the right form,
+and then open it in SMART, so that you work on what ART would produce.
+Progress bars and error messages are shown with [`ART-dialogs`](Usercommands#showing-dialogs-art-dialogs),
+which is included with ART (since version 1.26.11).
+
+| Menu entry | User command | Works on | Result |
+|---|---|---|---|
+| **AI masking (SMART)** | [10_smart_masking.txt](resources/10_smart_masking.txt) | any file | an exported (downscaled) JPEG is opened in SMART; you save the mask as a PNG |
+| **AI masking (SMART, full size)** | [11_smart_masking_full.txt](resources/11_smart_masking_full.txt) | any file | as above, at full resolution: slower, but with more precise edges |
+| **AI healing (SMART)** | [15_smart_healing_raw.txt](resources/15_smart_healing_raw.txt) | raw files | `FILENAME_healed.tif` |
+| **AI healing (SMART)** | [16_smart_healing_nonraw.txt](resources/16_smart_healing_nonraw.txt) | non-raw files | `FILENAME_healed.EXT` |
+| **AI denoise (SMART)** | [21_smart_denoise.txt](resources/21_smart_denoise.txt) | raw files | `FILENAME_denoised.dng` |
+
+### Installing the user commands
+
+Each user command is a small text file that starts a companion Python script. Download:
+
+- the user command files in the table above (only those you need);
+- the companion scripts [smart_masking.py](resources/smart_masking.py), [smart_healing.py](resources/smart_healing.py)
+  and [smart_denoise.py](resources/smart_denoise.py) (again, only the ones you need);
+- [art_usercommand.py](resources/art_usercommand.py), with the code shared by all the scripts (always needed),
+
+and put them all in the same directory,
+`$HOME/.config/ART/usercommands` (`%LOCALAPPDATA%\ART\usercommands` on Windows).
+The numbers at the beginning of the file names only set the order of the entries in the menu.
+
+Then open each script and edit the settings at the beginning of the file to adapt to your environment
+(the same two lines are in all of them):
 
 ```python
 # Python virtual environment to use
@@ -278,47 +118,85 @@ VENV = Path.home() / "src" / "ART-AI-venv"
 SMART_DIR = Path.home() / "src" / "SMART"
 ```
 
-The user command passes two options to the script (see the `Command` line in `smart_masking.txt`):
-`-f` makes ART export a downscaled image, which is faster
-(remove it to work on the full-resolution image, which is slower but keeps the mask edge artifacts to a minimum),
-and `--keep` leaves the exported JPEG file next to the original and does not wait for SMART to exit
-(without it, SMART runs in the foreground and the JPEG file is deleted when SMART exits).
+The scripts only use the Python standard library, so any Python 3 (3.8 or later) is enough to run them:
+SMART itself runs in the virtual environment given by `VENV`.
+The `.txt` files start the scripts with the `python3` command:
+if your Python interpreter is called differently (e.g. `python` on Windows), edit the `Command` line accordingly.
+The denoising command also needs [ExifTool](http://exiftool.org), which must be reachable through the `$PATH`
+(it is used to find out what kind of sensor the camera has, and by SMART to copy the metadata to the denoised file).
 
-### Testing that it works
+You should now see the new entries in the context menu of the file browser.
 
-You should have a new user command called "AI masking (SMART)".
-If everything is configured properly, activating it should result in an image
-`FILENAME_SMART.jpg` generated in the current directory
-(when invoked on a file called `FILENAME.ext`) and opened in the SMART gui.
-You can then quickly create masks by adding included (with shift + left-click)
-and excluded (with shift + right-click) points,
-and then save it as a png file.
-The file can be then loaded in ART as an external mask. Here's the corresponding demo:
+### AI masking
+
+Select an image and choose **AI masking (SMART)**.
+ART exports a JPEG (`FILENAME_SMART.jpg`, in the same folder), which is opened in SMART.
+Add included points with *shift + left click* and excluded points with *shift + right click*;
+then save the mask as a PNG file and load it in ART as an external mask.
+The JPEG file is deleted when you quit SMART.
+Here's a demo:
 
 - [AI masking demo](demos/ART-AI-masking.mp4)
 
+The "full size" variant exports the image at full resolution:
+it is slower, but the edges of the masks are more precise.
+The difference between the two commands is the options in the `Command` line of the `.txt` file:
+`-f` exports a downscaled image; `--keep` (not used by default) leaves the JPEG file in place
+and does not wait for SMART to exit.
 
-## AI masking (Windows environment)
+### AI healing
 
-*Contributed by Alexander Patrakov*
+For a raw file, ART exports a linear 32-bit TIFF (in the Rec.2020 colour space)
+with only the processing that cannot be done on a developed image
+(raw preprocessing, highlight recovery, lens correction, geometry, noise reduction, exposure compensation),
+and without tone curves or anything else that would clip the image.
+This is opened in SMART in healing mode:
+paint over what you want to remove with *shift + left drag* (*shift + right drag* erases the paint,
+the mouse wheel changes the brush size and *shift + wheel* the feather),
+press *Cmd/Ctrl + Enter* to fill the area, repeat as needed (steps can be undone), and save.
+The proposed file name is `FILENAME_healed.tif`, in the folder of the original file.
+If you save it there, it gets a copy of the sidecar of the original file,
+with the settings that were already applied by the export reset,
+so that you can continue editing it in ART without applying them twice.
+The linear TIFF keeps the full dynamic range, so the rest of the editing can be done on the healed file as usual.
 
-SMART has pre-built portable releases for Windows (x64). Download [release v0.2](https://github.com/artraweditor/SMART/releases/download/0.2/SMART-0.2-win64-portable.7z), which, at the time of this writing, is the latest version.
+For other kinds of files (JPEG, TIFF, ...), use the non-raw entry: the file is opened directly in SMART,
+and the result is saved as `FILENAME_healed.EXT`.
 
+### AI denoising
 
-Extract it under `%LOCALAPPDATA%`. That is, press Win+R, type `"%LOCALAPPDATA%"` in the address bar (with the surrounding quotes), press Enter, and then extract the archive into the folder that opens.
+Select a raw file and choose **AI denoise (SMART)**.
+ART converts the file to a DNG, applying only the raw processing steps (hot and dead pixels,
+white balance, ...) set in the sidecar of the file.
+The DNG is opened in SMART in denoising mode:
+choose the model (*fast*, *balanced* or *best*; larger is better but slower) in the toolbar,
+and press *Denoise* (or *Cmd/Ctrl + Enter*) to start;
+a progress dialog is shown, and the operation can be cancelled.
+When it is done, drag the divider of the view to compare the image before and after denoising
+(the *View* selector shows either of them alone), and save the result.
+The proposed file name is `FILENAME_denoised.dng`, in the folder of the original file;
+if you save it there, it gets a copy of the sidecar of the original file,
+with the white balance reset to the camera one (it is already applied to the data)
+and with the noise reduction of ART turned off.
+The file contains linear data, so all the usual processing of ART (tone curves, colour, sharpening, ...)
+can be applied on it.
 
-Navigate to the resulting `SMART-0.2-win64-portable` folder. Download one of the [SAM 2 model checkpoints](https://github.com/facebookresearch/sam2?tab=readme-ov-file#download-checkpoints) and put it in the `models` subdirectory.
+There are two kinds of DNG, depending on the raw file, and the user command chooses automatically
+(using ExifTool to find out what kind of sensor the camera has):
 
-Then run the `SMART.exe` program. It will create a configuration file, `artpixls-SMART.json`, in `%LOCALAPPDATA%`. Edit it using Notepad and adjust the `"model"` value to match the model you downloaded. For example:
+- for Bayer raw files (the large majority), ART writes the mosaiced raw data
+  (`--raw-preprocess=mosaic`), which are denoised by the *greycard* network,
+  that demosaics and denoises at the same time;
+- for other raw files (e.g. Fujifilm X-Trans), which that network does not support,
+  ART demosaics the image with the method set in the sidecar (`--raw-preprocess=demosaic`),
+  and SMART denoises the resulting linear DNG with the *TreeNet* models of RawForge.
+  They are conditioned on the ISO of the image, which is read from the file.
 
-```
-  "model": "sam2.1_hiera_base_plus.pt",
-```
+The three model choices are the same in both cases.
 
-Check that the `"device"` value is set to `"cpu"`.
+## Notes
 
-Then go to the `"%LOCALAPPDATA%\ART"` folder. Create the `usercommands` subfolder if it doesn't exist. Then, place two files there:
-
-- [`smart_masking.ps1`](resources/smart_masking.ps1)
-- [`smart_masking_windows.txt`](resources/smart_masking_windows.txt)
-
+- Everything runs locally: nothing is sent to external services.
+  (The only network access is the download of the models.)
+- Other AI tools can be integrated in ART in the same way, through user commands:
+  see the [previous version of this page](OLDAItools) for denoising with *nind-denoise* and *RawForge*.

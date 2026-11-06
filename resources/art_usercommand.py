@@ -1,30 +1,27 @@
-#!/usr/bin/env python3
-"""ART user command: denoise + demosaic a raw file with the AI denoiser of
-greycard (via greycard-denoise-raw), producing a linear DNG that ART opens as
-a raw file (camera matrix, DCP lookup and sidecar settings keep working).
+"""Common code of the ART user commands written in Python.
 
-This script only needs the Python standard library: the denoiser itself runs
-in the virtual environment of greycard-denoise-raw."""
+ART runs a user command with its own directory (with ART-cli and ART-dialogs)
+in the $PATH, and with the directory containing the command as the working
+directory (and, for a Python script, as the first entry of `sys.path`: this
+is why this module can be imported by the scripts that are next to it).
+
+Only the Python standard library is needed."""
 
 import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
-# directory of the greycard-denoise-raw project (its own virtualenv, in the
-# `.venv` subdirectory, is used)
-GREYCARD_DENOISE_RAW_DIR = Path.home() / "src" / "greycard-denoise-raw"
+# settings to add to the sidecar of a denoised image, so that the denoising
+# is not applied again
+DENOISE_OFF = """
+[Impulse Denoising]
+Enabled=false
 
-# network size: fast, balanced or best
-MODEL = "balanced"
-
-# onnxruntime provider: auto, cpu, coreml, cuda, directml, ...
-PROVIDER = "auto"
-
-##############################################################################
-# Helpers (the same in all the ART user commands written in Python)
+[Denoise]
+Enabled=false
+"""
 
 
 def add_to_path():
@@ -107,7 +104,7 @@ def venv_python(venv):
             return str(python)
     raise RuntimeError(
         "Python interpreter not found in %s: please check the settings at "
-        "the beginning of %s" % (venv, Path(__file__).name)
+        "the beginning of %s" % (venv, Path(sys.argv[0]).name)
     )
 
 
@@ -118,65 +115,27 @@ def write_sidecar(src, dst, extra):
         f.write(extra)
 
 
+def save_result(raw, result, tag, suffix, sidecar_extra=None):
+    """Move the file `result` next to the raw file `raw`, as RAW<tag><suffix>
+    (adding a number if that already exists), and return its path.
+
+    If `sidecar_extra` is given and `raw` has a sidecar, the new file gets
+    the same sidecar as the original, with `sidecar_extra` appended to
+    override some of the settings."""
+    dest = unique_path(str(Path(raw).with_suffix("")) + tag, suffix)
+    shutil.move(str(result), str(dest))
+    sidecar = Path(str(raw) + ".arp")
+    if sidecar_extra is not None and sidecar.is_file():
+        write_sidecar(sidecar, Path(str(dest) + ".arp"), sidecar_extra)
+    return dest
+
+
 def run(main):
+    """Run the `main` function of a script on its command line arguments,
+    showing in a dialog any exception that it raises."""
     add_to_path()
     try:
         main(sys.argv[1:])
     except Exception as e:
         show_error("%s: %s" % (type(e).__name__, e))
         sys.exit(1)
-
-
-SIDECAR_EXTRA = """
-[Impulse Denoising]
-Enabled=false
-
-[Denoise]
-Enabled=false
-"""
-
-
-def main(args):
-    if len(args) != 1:
-        raise RuntimeError("expected exactly one raw file")
-    raw = Path(args[0])
-    python = venv_python(GREYCARD_DENOISE_RAW_DIR / ".venv")
-    script = GREYCARD_DENOISE_RAW_DIR / "greycard_denoise_raw.py"
-
-    with tempfile.TemporaryDirectory(prefix="art_greycard_") as d:
-        out = Path(d) / "out.dng"
-        err = Path(d) / "error"
-        status = run_with_progress(
-            [
-                python,
-                str(script),
-                str(raw),
-                "-o",
-                str(out),
-                "--model",
-                MODEL,
-                "--provider",
-                PROVIDER,
-                "--progress",
-            ],
-            err,
-            "Denoising...",
-        )
-        if status is None:  # cancelled by the user
-            return
-        if status != 0 or not out.is_file():
-            # the last line is the error message (earlier ones may be a
-            # traceback or harmless runtime warnings)
-            show_error(last_lines(err) or "Denoising error!")
-            return
-        dest = unique_path(str(raw.with_suffix("")) + "-denoised", ".dng")
-        shutil.move(str(out), str(dest))
-        # use the same sidecar for the denoised image as for the original
-        # image, except that we override the denoising settings
-        sidecar = Path(str(raw) + ".arp")
-        if sidecar.is_file():
-            write_sidecar(sidecar, Path(str(dest) + ".arp"), SIDECAR_EXTRA)
-
-
-if __name__ == "__main__":
-    run(main)
