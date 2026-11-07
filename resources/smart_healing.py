@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ART user command: AI healing with SMART.
 
-Usage: smart_healing.py (--raw | --nonraw) FILE
+Usage: smart_healing.py (--raw | --nonraw) [--smart-cmd CMD] FILE
 
   --raw     FILE is a raw file: it is exported with ART-cli to a 32-bit float
             linear Rec.2020 TIFF, with only the processing that cannot be done
@@ -10,6 +10,9 @@ Usage: smart_healing.py (--raw | --nonraw) FILE
             noise reduction, exposure compensation), and that TIFF is opened
             in SMART (https://github.com/artraweditor/SMART) in healing mode.
   --nonraw  FILE is opened directly in SMART.
+  --smart-cmd CMD
+            command used to run SMART (default: the first SMART executable
+            found in $PATH).
 
 In both cases SMART is run with --save-as, to save to a temporary file:
 pressing Save there writes it at once. When SMART exits, if the file was
@@ -20,31 +23,25 @@ already applied by the export reset, so that they are not applied twice). The
 sidecar is written before the image is moved, so that it is already there
 when the healed image appears in ART.
 
-This script only needs the Python standard library: SMART itself runs in the
-Python virtual environment given below.
+This script only needs the Python standard library.
 
 The code shared by all the Python user commands is in art_usercommand.py,
 next to this file."""
 
 import argparse
-import subprocess
 import tempfile
 from pathlib import Path
 
 from art_usercommand import (
+    add_smart_cmd_arg,
     last_lines,
     run,
+    run_smart,
     run_with_progress,
     save_result,
     show_error,
-    venv_python,
+    smart_command,
 )
-
-# Python virtual environment to use
-VENV = Path.home() / "src" / "ART-AI-venv"
-
-# directory where SMART is located
-SMART_DIR = Path.home() / "src" / "SMART"
 
 ART_CLI = "ART-cli"
 
@@ -151,21 +148,10 @@ VerticalFlip=false
 """
 
 
-def run_smart(image, out):
+def heal(smart, image, out):
     """Run SMART in healing mode on `image`, saving to `out`, and wait for it
     to exit."""
-    python = venv_python(VENV)
-    subprocess.run(
-        [
-            python,
-            str(SMART_DIR / "src" / "main.py"),
-            "--mode",
-            "heal",
-            "--save-as",
-            str(out),
-            str(image),
-        ]
-    )
+    run_smart(smart, ["--mode", "heal", "--save-as", out, image])
 
 
 def main(args):
@@ -173,8 +159,10 @@ def main(args):
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--raw", action="store_true")
     mode.add_argument("--nonraw", action="store_true")
+    add_smart_cmd_arg(ap)
     ap.add_argument("file")
     opts = ap.parse_args(args)
+    smart = smart_command(opts.smart_cmd)
     orig = Path(opts.file).resolve()
     sidecar = Path(str(orig) + ".arp")
 
@@ -187,7 +175,7 @@ def main(args):
         d = Path(d)
         out = d / ("healed" + ext)
         if opts.nonraw:
-            run_smart(orig, out)
+            heal(smart, orig, out)
         else:
             profile = d / "p1.arp"
             text = EXPORT_PROFILE
@@ -208,7 +196,7 @@ def main(args):
             if status != 0 or not tif.is_file():
                 show_error(last_lines(err, 5) or "Export error!")
                 return
-            run_smart(tif, out)
+            heal(smart, tif, out)
         if out.is_file():
             save_result(orig, out, "_healed", ext, extra)
 

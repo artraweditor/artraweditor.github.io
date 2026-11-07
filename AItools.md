@@ -34,9 +34,21 @@ see `SMART --mode denoise --cli` and the [SMART documentation](https://github.co
 You can use the pre-built binaries from the [releases page](https://github.com/artraweditor/SMART/releases)
 of SMART on GitHub, or install it from the source code as explained below.
 
+The ART user commands start SMART by running a program called `SMART`
+(see [below](#making-smart-available-to-the-user-commands)).
+
+### Pre-built binaries
+
+Unpack the archive wherever you like.
+On Windows and Linux, it contains a `SMART` program that you can start from the file manager (it opens the graphical interface),
+and, on Windows, also a `SMART.com` file: this is the same program built for the command line,
+and is the one that runs when you type `SMART` in a terminal, so that its text output is shown there.
+On macOS, the program is inside the application bundle: `SMART.app/Contents/MacOS/SMART`.
+Then see [below](#making-smart-available-to-the-user-commands) to let the user commands find it.
+
+### Installing from source
+
 The instructions below are for Unix-like systems (Linux, macOS), and I could only test them on macOS.
-The integration with ART is done with Python scripts, so nothing should be specific to those systems,
-but the details (paths, name of the interpreter) may differ on Windows.
 
 1. Clone the repository:
 
@@ -77,6 +89,29 @@ but the details (paths, name of the interpreter) may differ on Windows.
    The masking models are the largest ones (from about 150 MB to 900 MB; larger is better but slower),
    the healing model is about 200 MB, and the denoising models range from a few MB to about 20 MB each.
 
+### Making SMART available to the user commands
+
+The user commands below look for an executable called `SMART` in the directories listed in your `$PATH`
+(for macOS, the usual places for tools, like `/opt/homebrew/bin` and `/usr/local/bin`, are also searched),
+and run it.
+
+- If you use a pre-built binary, add the directory that contains `SMART` to your `$PATH`,
+  or put a link to it in a directory that is already there, e.g.
+  `ln -s /path/to/SMART /usr/local/bin/SMART` (`ln -s /Applications/SMART.app/Contents/MacOS/SMART ~/.local/bin/SMART` for a macOS application).
+  On Windows, add the directory with `SMART.exe` to the `Path` environment variable.
+- If you installed from source, create a small script called `SMART` in a directory that is in your `$PATH`
+  (e.g. `~/.local/bin/SMART`, made executable with `chmod +x`) that runs SMART in its virtual environment:
+
+  ```sh
+  #!/bin/sh
+  exec "$HOME/src/ART-AI-venv/bin/python" "$HOME/src/SMART/src/main.py" "$@"
+  ```
+
+- If you do not want to change your `$PATH`, you can instead give the command to run with the `--smart-cmd` option
+  in the `Command` line of each user command (see [below](#installing-the-user-commands)).
+
+You can check that it works by running `SMART --version` in a terminal.
+
 ## Using SMART from ART
 
 The following user commands start SMART on the selected file from the context menu of the file browser
@@ -88,11 +123,11 @@ which is included with ART (since version 1.26.11).
 
 | Menu entry | User command | Works on | Result |
 |---|---|---|---|
-| **AI masking (SMART)** | [10_smart_masking.txt](resources/10_smart_masking.txt) | any file | an exported (downscaled) JPEG is opened in SMART; you save the mask as a PNG |
-| **AI masking (SMART, full size)** | [11_smart_masking_full.txt](resources/11_smart_masking_full.txt) | any file | as above, at full resolution: slower, but with more precise edges |
-| **AI healing (SMART)** | [15_smart_healing_raw.txt](resources/15_smart_healing_raw.txt) | raw files | `FILENAME_healed.tif` |
-| **AI healing (SMART)** | [16_smart_healing_nonraw.txt](resources/16_smart_healing_nonraw.txt) | non-raw files | `FILENAME_healed.EXT` |
-| **AI denoise (SMART)** | [21_smart_denoise.txt](resources/21_smart_denoise.txt) | raw files | `FILENAME_denoised.dng` |
+| **SMART AI masking** | [10_smart_masking.txt](resources/10_smart_masking.txt) | any file | an exported (downscaled) JPEG is opened in SMART; you save the mask as a PNG |
+| **SMART AI masking (full size)** | [11_smart_masking_full.txt](resources/11_smart_masking_full.txt) | any file | as above, at full resolution: slower, but with more precise edges |
+| **SMART AI healing** | [15_smart_healing_raw.txt](resources/15_smart_healing_raw.txt) | raw files | `FILENAME_healed.tif` |
+| **SMART AI healing** | [16_smart_healing_nonraw.txt](resources/16_smart_healing_nonraw.txt) | non-raw files | `FILENAME_healed.EXT` |
+| **SMART AI denoise** | [21_smart_denoise.txt](resources/21_smart_denoise.txt) | raw files | `FILENAME_denoised.dng` |
 
 ### Installing the user commands
 
@@ -107,21 +142,18 @@ and put them all in the same directory,
 `$HOME/.config/ART/usercommands` (`%LOCALAPPDATA%\ART\usercommands` on Windows).
 The numbers at the beginning of the file names only set the order of the entries in the menu.
 
-Then open each script and edit the settings at the beginning of the file to adapt to your environment
-(the same two lines are in all of them):
-
-```python
-# Python virtual environment to use
-VENV = Path.home() / "src" / "ART-AI-venv"
-
-# directory where SMART is located
-SMART_DIR = Path.home() / "src" / "SMART"
-```
-
-The scripts only use the Python standard library, so any Python 3 (3.8 or later) is enough to run them:
-SMART itself runs in the virtual environment given by `VENV`.
+The scripts only use the Python standard library, so any Python 3 (3.8 or later) is enough to run them.
 The `.txt` files start the scripts with the `python3` command:
 if your Python interpreter is called differently (e.g. `python` on Windows), edit the `Command` line accordingly.
+
+The scripts start SMART by running the first `SMART` executable found in your `$PATH`
+(see [above](#making-smart-available-to-the-user-commands)).
+To use a different one, add the `--smart-cmd` option to the `Command` line of the user command, e.g.:
+
+```text
+Command=python3 ./smart_healing.py --raw --smart-cmd "/opt/SMART/SMART"
+```
+
 The denoising command also needs [ExifTool](http://exiftool.org), which must be reachable through the `$PATH`
 (it is used to find out what kind of sensor the camera has, and by SMART to copy the metadata to the denoised file).
 
@@ -129,7 +161,7 @@ You should now see the new entries in the context menu of the file browser.
 
 ### AI masking
 
-Select an image and choose **AI masking (SMART)**.
+Select an image and choose **SMART AI masking**.
 ART exports a JPEG (`FILENAME_SMART.jpg`, in the same folder), which is opened in SMART.
 Add included points with *shift + left click* and excluded points with *shift + right click*;
 then save the mask as a PNG file and load it in ART as an external mask.
@@ -168,7 +200,7 @@ and the result is saved as `FILENAME_healed.EXT` in the same way.
 
 ### AI denoising
 
-Select a raw file and choose **AI denoise (SMART)**.
+Select a raw file and choose **SMART AI denoise**.
 ART converts the file to a DNG, applying only the raw processing steps (hot and dead pixels,
 white balance, ...) set in the sidecar of the file.
 The DNG is opened in SMART in denoising mode:

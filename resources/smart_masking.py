@@ -10,14 +10,15 @@ writes it at once. When SMART exits, if the mask was written it is moved next
 to the raw file as FILENAME_mask.png (or FILENAME_mask-1.png etc. if that
 exists). (With --keep, SMART is not waited for, so the save dialog is used.)
 
-Usage: smart_masking.py [-f] [--keep] FILE
+Usage: smart_masking.py [-f] [--keep] [--smart-cmd CMD] FILE
 
-  -f, --fast  export a downscaled image (faster, but less precise masks)
-  --keep      leave the JPEG file (FILENAME_SMART.jpg) next to the original,
-              and do not wait for SMART to exit
+  -f, --fast       export a downscaled image (faster, but less precise masks)
+  --keep           leave the JPEG file (FILENAME_SMART.jpg) next to the
+                   original, and do not wait for SMART to exit
+  --smart-cmd CMD  command used to run SMART (default: the first SMART
+                   executable found in $PATH)
 
-This script only needs the Python standard library: SMART itself runs in the
-Python virtual environment given below.
+This script only needs the Python standard library.
 
 The code shared by all the Python user commands is in art_usercommand.py,
 next to this file."""
@@ -29,19 +30,15 @@ import tempfile
 from pathlib import Path
 
 from art_usercommand import (
+    add_smart_cmd_arg,
     last_lines,
     run,
+    run_smart,
     run_with_progress,
     save_result,
     show_error,
-    venv_python,
+    smart_command,
 )
-
-# Python virtual environment to use
-VENV = Path.home() / "src" / "ART-AI-venv"
-
-# directory where SMART is located
-SMART_DIR = Path.home() / "src" / "SMART"
 
 ART_CLI = "ART-cli"
 
@@ -76,10 +73,11 @@ def main(args):
     ap = argparse.ArgumentParser()
     ap.add_argument("-f", "--fast", action="store_true")
     ap.add_argument("--keep", action="store_true")
+    add_smart_cmd_arg(ap)
     ap.add_argument("raw")
     opts = ap.parse_args(args)
     raw = Path(opts.raw)
-    python = venv_python(VENV)
+    smart = smart_command(opts.smart_cmd)
 
     with tempfile.TemporaryDirectory(prefix="art_smart_") as d:
         d = Path(d)
@@ -103,13 +101,13 @@ def main(args):
                 last_lines(err, 5) or "ART-cli did not produce any output"
             )
             return
-        smart = [python, str(SMART_DIR / "src" / "main.py")]
+        smart += ["--mode", "mask"]
         if opts.keep:
             dest = save_result(raw, jpg, "_SMART", ".jpg")
             start_detached(smart + [str(dest)])
             return
         mask = d / "mask.png"
-        subprocess.run(smart + ["--save-as", str(mask), str(jpg)])
+        run_smart(smart, ["--save-as", mask, jpg])
         if mask.is_file():
             save_result(raw, mask, "_mask", ".png")
 

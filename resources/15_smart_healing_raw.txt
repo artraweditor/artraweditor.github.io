@@ -1,5 +1,5 @@
 [ART UserCommand]
-Label=AI healing (SMART)
+Label=SMART AI healing
 Command=python3 ./smart_healing.py --raw
 NumArgs=1
 FileType=raw

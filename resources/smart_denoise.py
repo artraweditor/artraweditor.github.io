@@ -23,12 +23,17 @@ neutral). For linear DNGs (non-Bayer files), the input profile is also set to
 the embedded one. The sidecar is written before the image is moved, so that
 it is already there when the image appears in ART.
 
-This script only needs the Python standard library: SMART itself runs in the
-Python virtual environment given below.
+Usage: smart_denoise.py [--smart-cmd CMD] FILE
+
+  --smart-cmd CMD  command used to run SMART (default: the first SMART
+                   executable found in $PATH)
+
+This script only needs the Python standard library.
 
 The code shared by all the Python user commands is in art_usercommand.py,
 next to this file."""
 
+import argparse
 import json
 import subprocess
 import tempfile
@@ -36,19 +41,15 @@ from pathlib import Path
 
 from art_usercommand import (
     DENOISE_OFF,
+    add_smart_cmd_arg,
     last_lines,
     run,
+    run_smart,
     run_with_progress,
     save_result,
     show_error,
-    venv_python,
+    smart_command,
 )
-
-# Python virtual environment to use
-VENV = Path.home() / "src" / "ART-AI-venv"
-
-# directory where SMART is located
-SMART_DIR = Path.home() / "src" / "SMART"
 
 ART_CLI = "ART-cli"
 
@@ -141,9 +142,12 @@ def is_bayer(raw):
 
 
 def main(args):
-    if len(args) != 1:
-        raise RuntimeError("expected exactly one raw file")
-    orig = Path(args[0]).resolve()
+    ap = argparse.ArgumentParser()
+    add_smart_cmd_arg(ap)
+    ap.add_argument("raw")
+    opts = ap.parse_args(args)
+    smart = smart_command(opts.smart_cmd)
+    orig = Path(opts.raw).resolve()
     kind = "mosaic" if is_bayer(orig) else "demosaic"
 
     with tempfile.TemporaryDirectory(prefix="art_smart_denoise_") as d:
@@ -164,18 +168,9 @@ def main(args):
             show_error(last_lines(err, 5) or "Conversion error!")
             return
         out = d / "denoised.dng"
-        subprocess.run(
-            [
-                venv_python(VENV),
-                str(SMART_DIR / "src" / "main.py"),
-                "--mode",
-                "denoise",
-                "--format",
-                "dng",
-                "--save-as",
-                str(out),
-                str(dng),
-            ]
+        run_smart(
+            smart,
+            ["--mode", "denoise", "--format", "dng", "--save-as", out, dng],
         )
         if out.is_file():
             save_result(

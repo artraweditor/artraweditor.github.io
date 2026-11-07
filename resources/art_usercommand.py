@@ -8,6 +8,7 @@ is why this module can be imported by the scripts that are next to it).
 Only the Python standard library is needed."""
 
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -96,16 +97,51 @@ def unique_path(stem, suffix):
     return path
 
 
-def venv_python(venv):
-    """The Python interpreter of a virtual environment (Unix or Windows)."""
-    for rel in ("bin/python", "Scripts/python.exe"):
-        python = Path(venv) / rel
-        if python.exists():
-            return str(python)
-    raise RuntimeError(
-        "Python interpreter not found in %s: please check the settings at "
-        "the beginning of %s" % (venv, Path(sys.argv[0]).name)
+def add_smart_cmd_arg(parser):
+    """Add the --smart-cmd option to an argparse parser."""
+    parser.add_argument(
+        "--smart-cmd",
+        metavar="CMD",
+        help="command to run SMART (default: the first SMART executable "
+        "found in $PATH)",
     )
+
+
+def smart_command(cmd=None):
+    """The command (as a list of arguments) that runs SMART: `cmd`, if given
+    (a command line, e.g. the path of the executable), otherwise the first
+    "SMART" executable found in $PATH."""
+    if cmd:
+        if os.name == "nt":
+            # keep the backslashes of Windows paths
+            parts = [a.strip('"') for a in shlex.split(cmd, posix=False)]
+        else:
+            parts = shlex.split(cmd)
+        if parts:
+            return parts
+    exe = shutil.which("SMART")
+    if exe is None:
+        raise RuntimeError(
+            "SMART executable not found in $PATH: add its directory to "
+            "$PATH, or give its location with --smart-cmd in the Command "
+            "line of the user command"
+        )
+    return [exe]
+
+
+def smart_popen_kwargs():
+    """Extra arguments to run SMART from ART on Windows without opening a
+    console window (SMART may be the console version of the program)."""
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NO_WINDOW}
+    return {}
+
+
+def run_smart(smart, args):
+    """Run SMART (the command `smart`, see smart_command) with the arguments
+    `args` and wait for it to exit."""
+    return subprocess.run(list(smart) + [str(a) for a in args],
+                          **smart_popen_kwargs())
 
 
 def write_sidecar(src, dst, extra):
