@@ -36,6 +36,25 @@ that must comply with the following specifications:
     * `MatchFocalLen`: match on the focal length;
     * `MatchDimensions`: match on the image dimensions.
 
+### Controlling which commands are loaded and their order
+
+By default, all the `.txt` files in the `usercommands` directory are loaded, and the commands are listed sorted by file name.
+Since ART version 1.26.11, this can be customized by putting in the same directory a text file called `ARTlist.txt`
+(the name is matched case-insensitively), in the same way as for [LUTs and CTL scripts](Luts#artlist).
+If present, the file determines which user command files are loaded, and in which order they appear in the menu.
+
+The file contains one file name per line (relative to the `usercommands` directory, or an absolute path).
+Anything starting with a `#` and up to the end of the line is ignored, and so are blank lines. For example:
+
+```
+# my commands
+stitch.txt
+resize.txt     # trailing comments are fine
+```
+
+Entries that do not exist are skipped, as are duplicates. Files in the directory that are not listed are not loaded.
+Listed files can have any name (they do not need the `.txt` extension).
+
 ## Environment
 
 User commands are run with the directory containing the ART executables added to the `$PATH`, so `ART-cli` and `ART-dialogs` (see below) can be invoked by name, without specifying their location. Any other program that the command needs (e.g. `hugin` in the example below) must be reachable through the `$PATH` that ART inherited from the environment it was started from; this can be a problem on macOS when ART is started from the Finder, where the `$PATH` is very short. In that case, a script can set it explicitly (e.g. `export PATH=/opt/homebrew/bin:$PATH`).
