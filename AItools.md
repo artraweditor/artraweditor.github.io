@@ -48,7 +48,7 @@ Then see [below](#making-smart-available-to-the-user-commands) to let the user c
 
 ### Installing from source
 
-The instructions below are for Unix-like systems (Linux, macOS), and I could only test them on macOS.
+The instructions below are for Unix-like systems (Linux, macOS), but they should be easy to adapt to Windows as well.
 
 1. Clone the repository:
 
@@ -57,7 +57,7 @@ The instructions below are for Unix-like systems (Linux, macOS), and I could onl
    ```
 
 2. Create a Python virtual environment, activate it, and install the dependencies
-   (the same environment can be shared with other AI tools):
+   (the same environment can be shared with other AI tools; SMART itself does not need PyTorch):
 
    ```text
    $ python -m venv ART-AI-venv
@@ -68,10 +68,15 @@ The instructions below are for Unix-like systems (Linux, macOS), and I could onl
 3. Run `python SMART/src/main.py --init-config` from a terminal
    to create an initial configuration file.
    The path to the file will be printed in output.
-   Edit it with a text editor, and set the `device` parameter to the device to use for computations:
-   `"cuda"` for a CUDA-capable GPU,
-   `"mps"` for the GPU on an ARM Apple machine,
-   or `"cpu"` otherwise (this might be slow though).
+   You can edit it with a text editor, but the defaults should work: all the networks run with
+   [onnxruntime](https://onnxruntime.ai/) (PyTorch is not needed), on the CPU for masking,
+   on the GPU through CoreML for healing on a Mac (the CPU elsewhere),
+   and on the best provider available for denoising.
+   To use another execution provider (e.g. `"cuda"` for a CUDA-capable GPU),
+   set `mask_provider` (masking), `heal_providers` (healing, a list, e.g. `["CUDAExecutionProvider"]`)
+   and/or `denoise_provider` (denoising).
+   (For masking on a Mac, `"coreml"` makes the image analysis about twice as fast,
+   but the first start takes several minutes to compile the network.)
 
 4. Download the models for the tools that you want to use. They are put in the `models/` directory of SMART:
 
@@ -81,13 +86,15 @@ The instructions below are for Unix-like systems (Linux, macOS), and I could onl
    $ python SMART/src/main.py --download-denoise-model all       # denoising: fast, balanced, best, or all
    ```
 
-   For masking, set also the `model` parameter in the configuration file to the name of the SAM 2 checkpoint
-   (`sam2.1_hiera_base_plus.pt` for the example above).
+   For masking, set also the `model` parameter in the configuration file to the quality you downloaded
+   (`"base_plus"` for the example above, which is also the default).
    If a model is missing when SMART starts (or, for denoising, when you press the *Denoise* button),
    SMART offers to download it.
 
-   The masking models are the largest ones (from about 150 MB to 900 MB; larger is better but slower),
-   the healing model is about 200 MB, and the denoising models range from a few MB to about 20 MB each.
+   The masking models are the largest ones (from about 130 MB to 870 MB; larger is better but slower),
+   the healing model is about 210 MB, and the denoising models range from a few MB to about 20 MB each.
+   When healing runs on CoreML, the compiled networks are cached in `models/coreml-cache`
+   (about 0.4 GB for each window size used).
 
 ### Making SMART available to the user commands
 
