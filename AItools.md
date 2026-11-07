@@ -133,16 +133,17 @@ Select an image and choose **AI masking (SMART)**.
 ART exports a JPEG (`FILENAME_SMART.jpg`, in the same folder), which is opened in SMART.
 Add included points with *shift + left click* and excluded points with *shift + right click*;
 then save the mask as a PNG file and load it in ART as an external mask.
+Pressing *Save* in SMART writes the mask at once, without asking for a file name
+(the *Open* button is hidden): when you quit SMART, the mask is moved next to the original file as
+`FILENAME_mask.png` (or `FILENAME_mask-1.png`, ... if that name is already taken).
 The JPEG file is deleted when you quit SMART.
-Here's a demo:
-
-- [AI masking demo](demos/ART-AI-masking.mp4)
 
 The "full size" variant exports the image at full resolution:
 it is slower, but the edges of the masks are more precise.
 The difference between the two commands is the options in the `Command` line of the `.txt` file:
 `-f` exports a downscaled image; `--keep` (not used by default) leaves the JPEG file in place
-and does not wait for SMART to exit.
+and does not wait for SMART to exit
+(SMART then cannot move the mask when it is done, so it asks for a file name when you save, as usual).
 
 ### AI healing
 
@@ -154,14 +155,16 @@ This is opened in SMART in healing mode:
 paint over what you want to remove with *shift + left drag* (*shift + right drag* erases the paint,
 the mouse wheel changes the brush size and *shift + wheel* the feather),
 press *Cmd/Ctrl + Enter* to fill the area, repeat as needed (steps can be undone), and save.
-The proposed file name is `FILENAME_healed.tif`, in the folder of the original file.
-If you save it there, it gets a copy of the sidecar of the original file,
+Pressing *Save* in SMART writes the image at once, without asking for a file name
+(the *Open* button is hidden): when you quit SMART, the image is moved next to the original file
+as `FILENAME_healed.tif` (or `FILENAME_healed-1.tif`, ... if that name is already taken).
+It gets a copy of the sidecar of the original file,
 with the settings that were already applied by the export reset,
 so that you can continue editing it in ART without applying them twice.
 The linear TIFF keeps the full dynamic range, so the rest of the editing can be done on the healed file as usual.
 
 For other kinds of files (JPEG, TIFF, ...), use the non-raw entry: the file is opened directly in SMART,
-and the result is saved as `FILENAME_healed.EXT`.
+and the result is saved as `FILENAME_healed.EXT` in the same way.
 
 ### AI denoising
 
@@ -174,8 +177,10 @@ and press *Denoise* (or *Cmd/Ctrl + Enter*) to start;
 a progress dialog is shown, and the operation can be cancelled.
 When it is done, drag the divider of the view to compare the image before and after denoising
 (the *View* selector shows either of them alone), and save the result.
-The proposed file name is `FILENAME_denoised.dng`, in the folder of the original file;
-if you save it there, it gets a copy of the sidecar of the original file,
+Pressing *Save* in SMART writes the DNG at once, without asking for a file name
+(the *Open* button is hidden): when you quit SMART, it is moved next to the original file
+as `FILENAME_denoised.dng` (or `FILENAME_denoised-1.dng`, ... if that name is already taken),
+with a copy of the sidecar of the original file,
 with the white balance reset to the camera one (it is already applied to the data)
 and with the noise reduction of ART turned off.
 The file contains linear data, so all the usual processing of ART (tone curves, colour, sharpening, ...)

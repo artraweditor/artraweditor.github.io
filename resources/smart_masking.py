@@ -5,6 +5,11 @@ The raw file is exported to a JPEG with ART-cli, which is opened in the SMART
 GUI (https://github.com/artraweditor/SMART): masks can be created there and
 saved as png files, to be loaded in ART as external masks.
 
+SMART is run with --save-as, to save to a temporary file: pressing Save there
+writes it at once. When SMART exits, if the mask was written it is moved next
+to the raw file as FILENAME_mask.png (or FILENAME_mask-1.png etc. if that
+exists). (With --keep, SMART is not waited for, so the save dialog is used.)
+
 Usage: smart_masking.py [-f] [--keep] FILE
 
   -f, --fast  export a downscaled image (faster, but less precise masks)
@@ -98,19 +103,15 @@ def main(args):
                 last_lines(err, 5) or "ART-cli did not produce any output"
             )
             return
-        dest = save_result(raw, jpg, "_SMART", ".jpg")
-
-    smart = [python, str(SMART_DIR / "src" / "main.py"), str(dest)]
-    if opts.keep:
-        start_detached(smart)
-    else:
-        try:
-            subprocess.run(smart)
-        finally:
-            try:
-                dest.unlink()
-            except OSError:
-                pass
+        smart = [python, str(SMART_DIR / "src" / "main.py")]
+        if opts.keep:
+            dest = save_result(raw, jpg, "_SMART", ".jpg")
+            start_detached(smart + [str(dest)])
+            return
+        mask = d / "mask.png"
+        subprocess.run(smart + ["--save-as", str(mask), str(jpg)])
+        if mask.is_file():
+            save_result(raw, mask, "_mask", ".png")
 
 
 if __name__ == "__main__":

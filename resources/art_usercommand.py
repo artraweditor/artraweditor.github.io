@@ -115,18 +115,24 @@ def write_sidecar(src, dst, extra):
         f.write(extra)
 
 
-def save_result(raw, result, tag, suffix, sidecar_extra=None):
+def save_result(raw, result, tag, suffix, sidecar_extra=None, write=None):
     """Move the file `result` next to the raw file `raw`, as RAW<tag><suffix>
     (adding a number if that already exists), and return its path.
 
-    If `sidecar_extra` is given and `raw` has a sidecar, the new file gets
-    the same sidecar as the original, with `sidecar_extra` appended to
-    override some of the settings."""
+    If `raw` has a sidecar, the new file gets one too: the same as the
+    original, with `sidecar_extra` appended to override some of the settings
+    (if given), or written by `write(src, dst)` (if given). The sidecar is
+    written BEFORE the file is moved, so that it is already there when ART
+    sees the new file (otherwise ART may create a default one, replacing
+    ours)."""
     dest = unique_path(str(Path(raw).with_suffix("")) + tag, suffix)
-    shutil.move(str(result), str(dest))
     sidecar = Path(str(raw) + ".arp")
-    if sidecar_extra is not None and sidecar.is_file():
-        write_sidecar(sidecar, Path(str(dest) + ".arp"), sidecar_extra)
+    if sidecar.is_file():
+        if write is not None:
+            write(sidecar, Path(str(dest) + ".arp"))
+        elif sidecar_extra is not None:
+            write_sidecar(sidecar, Path(str(dest) + ".arp"), sidecar_extra)
+    shutil.move(str(result), str(dest))
     return dest
 
 

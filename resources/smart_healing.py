@@ -11,10 +11,14 @@ Usage: smart_healing.py (--raw | --nonraw) FILE
             in SMART (https://github.com/artraweditor/SMART) in healing mode.
   --nonraw  FILE is opened directly in SMART.
 
-In both cases the save dialog of SMART proposes FILENAME_healed.EXT next to
-the original file. If that file is written, it gets a copy of the sidecar of
-the original file (for raw files, with the settings that were already applied
-by the export reset, so that they are not applied twice).
+In both cases SMART is run with --save-as, to save to a temporary file:
+pressing Save there writes it at once. When SMART exits, if the file was
+written it is moved next to the original file as FILENAME_healed.EXT (or
+FILENAME_healed-1.EXT etc. if that exists), together with a copy of the
+sidecar of the original file (for raw files, with the settings that were
+already applied by the export reset, so that they are not applied twice). The
+sidecar is written before the image is moved, so that it is already there
+when the healed image appears in ART.
 
 This script only needs the Python standard library: SMART itself runs in the
 Python virtual environment given below.
@@ -25,16 +29,15 @@ next to this file."""
 import argparse
 import subprocess
 import tempfile
-import time
 from pathlib import Path
 
 from art_usercommand import (
     last_lines,
     run,
     run_with_progress,
+    save_result,
     show_error,
     venv_python,
-    write_sidecar,
 )
 
 # Python virtual environment to use
@@ -148,8 +151,9 @@ VerticalFlip=false
 """
 
 
-def run_smart(image, outdir):
-    """Run SMART in healing mode on `image` and wait for it to exit."""
+def run_smart(image, out):
+    """Run SMART in healing mode on `image`, saving to `out`, and wait for it
+    to exit."""
     python = venv_python(VENV)
     subprocess.run(
         [
@@ -157,8 +161,8 @@ def run_smart(image, outdir):
             str(SMART_DIR / "src" / "main.py"),
             "--mode",
             "heal",
-            "--outdir",
-            str(outdir),
+            "--save-as",
+            str(out),
             str(image),
         ]
     )
@@ -173,33 +177,23 @@ def main(args):
     opts = ap.parse_args(args)
     orig = Path(opts.file).resolve()
     sidecar = Path(str(orig) + ".arp")
-    start = time.time() - 1  # file times can be coarse
 
-    def healed_files(directory, stem):
-        """Files that SMART wrote with the default name, whatever the
-        extension (the user may have picked another format)."""
-        found = []
-        for p in directory.glob(glob_escape(stem) + "_healed.*"):
-            if p.suffix.lower() != ".arp" and p.stat().st_mtime >= start:
-                found.append(p)
-        return found
+    # the extension of the output is the one of the image that SMART opens
+    # (a tif for raw files)
+    ext = (orig.suffix if opts.nonraw else ".tif") or ".tif"
+    extra = "" if opts.nonraw else SIDECAR_EXTRA
 
-    if opts.nonraw:
-        run_smart(orig, orig.parent)
-        extra = ""
-        stem = orig.stem
-    else:
-        extra = SIDECAR_EXTRA
-        stem = orig.stem
-        with tempfile.TemporaryDirectory(prefix="art_smart_heal_") as d:
-            d = Path(d)
+    with tempfile.TemporaryDirectory(prefix="art_smart_heal_") as d:
+        d = Path(d)
+        out = d / ("healed" + ext)
+        if opts.nonraw:
+            run_smart(orig, out)
+        else:
             profile = d / "p1.arp"
             text = EXPORT_PROFILE
             if sidecar.is_file():
                 text += exposure_group(sidecar)
             profile.write_text(text, encoding="utf-8")
-            # named after the raw file, so that the default name in the save
-            # dialog of SMART is FILENAME_healed.tif
             tif = d / (orig.stem + ".tif")
             err = d / "error"
             status = run_with_progress(
@@ -214,16 +208,9 @@ def main(args):
             if status != 0 or not tif.is_file():
                 show_error(last_lines(err, 5) or "Export error!")
                 return
-            start = time.time() - 1
-            run_smart(tif, orig.parent)
-
-    if sidecar.is_file():
-        for p in healed_files(orig.parent, stem):
-            write_sidecar(sidecar, Path(str(p) + ".arp"), extra)
-
-
-def glob_escape(s):
-    return "".join("[%s]" % c if c in "*?[" else c for c in s)
+            run_smart(tif, out)
+        if out.is_file():
+            save_result(orig, out, "_healed", ext, extra)
 
 
 if __name__ == "__main__":

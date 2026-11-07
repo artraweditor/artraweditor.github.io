@@ -13,10 +13,15 @@ denoiser does not support, are demosaiced by ART and converted to a linear
 DNG instead, which SMART denoises with another network. Whether a raw file
 is Bayer or not is found out with exiftool.
 
-The save dialog of SMART proposes FILENAME_denoised.dng next to the original
-file. If that file is written, it gets a copy of the sidecar of the original
+SMART is run with --save-as, to save to a temporary file: pressing Save
+there writes it at once. When SMART exits, if the file was written it is moved
+next to the original file as FILENAME_denoised.dng (or FILENAME_denoised-1.dng
+etc. if that exists), together with a copy of the sidecar of the original
 file, with the denoising turned off (and the white balance reset to the
-camera one, as the white balance is already applied to the data).
+camera one: the DNG stores the white balance of the original as its as-shot
+neutral). For linear DNGs (non-Bayer files), the input profile is also set to
+the embedded one. The sidecar is written before the image is moved, so that
+it is already there when the image appears in ART.
 
 This script only needs the Python standard library: SMART itself runs in the
 Python virtual environment given below.
@@ -27,7 +32,6 @@ next to this file."""
 import json
 import subprocess
 import tempfile
-import time
 from pathlib import Path
 
 from art_usercommand import (
@@ -35,9 +39,9 @@ from art_usercommand import (
     last_lines,
     run,
     run_with_progress,
+    save_result,
     show_error,
     venv_python,
-    write_sidecar,
 )
 
 # Python virtual environment to use
@@ -48,8 +52,17 @@ SMART_DIR = Path.home() / "src" / "SMART"
 
 ART_CLI = "ART-cli"
 
-# the white balance is baked into the DNG written by ART-cli, so the
-# sidecar of the denoised file must not apply it again
+# Settings appended to the sidecar of the denoised file.
+#
+# The DNG written by ART-cli has the white balance of the sidecar as its
+# as-shot neutral, so "Camera" gives the white balance of the original. For
+# the mosaiced DNG (Bayer files) ART-cli is run with --dng-wb=neutral: the
+# data is not white balanced. With the default, --dng-wb=baked, the white
+# balance is applied to the data but the neutral and colour matrix no longer
+# match it, so the camera profile, which depends on the colour temperature,
+# is applied wrongly and the colours are off. The linear DNG (other files) is
+# baked and cannot be given that option, so its sidecar uses the embedded
+# input profile instead of the camera one (see write_denoise_sidecar).
 SIDECAR_EXTRA = (
     """
 [White Balance]
@@ -58,6 +71,45 @@ Setting=Camera
 """
     + DENOISE_OFF
 )
+
+
+def set_key(text, group, key, value):
+    """Set `key` to `value` in the [`group`] section of the sidecar `text`
+    (adding the key, or the section, if missing)."""
+    lines = text.splitlines()
+    header = "[%s]" % group
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == header:
+            start = i
+            break
+    if start is None:
+        return text.rstrip("\n") + "\n\n%s\n%s=%s\n" % (header, key, value)
+    end = len(lines)
+    for i in range(start + 1, len(lines)):
+        if lines[i].startswith("["):
+            end = i
+            break
+    for i in range(start + 1, end):
+        if lines[i].startswith(key + "="):
+            lines[i] = "%s=%s" % (key, value)
+            break
+    else:
+        lines.insert(start + 1, "%s=%s" % (key, value))
+    return "\n".join(lines) + "\n"
+
+
+def write_denoise_sidecar(src, dst, kind):
+    """Write to `dst` the sidecar `src`, adapted to the denoised file made
+    from a DNG of this `kind` ("mosaic" or "demosaic")."""
+    text = src.read_text(encoding="utf-8")
+    if kind == "demosaic":
+        # the linear DNG written by ART-cli has the white balance baked in,
+        # which makes the camera profiles (auto-matched or not) wrong
+        text = set_key(text, "Color Management", "InputProfile", "(embedded)")
+    with open(dst, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+        f.write(SIDECAR_EXTRA)
 
 
 def is_bayer(raw):
@@ -88,25 +140,19 @@ def is_bayer(raw):
                ("Red", "Green", "Blue") for p in pattern)
 
 
-def glob_escape(s):
-    return "".join("[%s]" % c if c in "*?[" else c for c in s)
-
-
 def main(args):
     if len(args) != 1:
         raise RuntimeError("expected exactly one raw file")
     orig = Path(args[0]).resolve()
-    sidecar = Path(str(orig) + ".arp")
     kind = "mosaic" if is_bayer(orig) else "demosaic"
 
     with tempfile.TemporaryDirectory(prefix="art_smart_denoise_") as d:
         d = Path(d)
-        # named after the raw file, so that the default name in the save
-        # dialog of SMART is FILENAME_denoised.dng
         dng = d / (orig.stem + ".dng")
         err = d / "error"
         status = run_with_progress(
             [ART_CLI, "--progress", "-d", "-s", "--raw-preprocess=" + kind]
+            + (["--dng-wb=neutral"] if kind == "mosaic" else [])
             + ["-Y", "-o", str(dng), "-c", str(orig)],
             err,
             "Converting to DNG...",
@@ -117,7 +163,7 @@ def main(args):
         if status != 0 or not dng.is_file():
             show_error(last_lines(err, 5) or "Conversion error!")
             return
-        start = time.time() - 1  # file times can be coarse
+        out = d / "denoised.dng"
         subprocess.run(
             [
                 venv_python(VENV),
@@ -126,17 +172,19 @@ def main(args):
                 "denoise",
                 "--format",
                 "dng",
-                "--outdir",
-                str(orig.parent),
+                "--save-as",
+                str(out),
                 str(dng),
             ]
         )
-
-    if sidecar.is_file():
-        # whatever the extension the user picked
-        for p in orig.parent.glob(glob_escape(orig.stem) + "_denoised.*"):
-            if p.suffix.lower() != ".arp" and p.stat().st_mtime >= start:
-                write_sidecar(sidecar, Path(str(p) + ".arp"), SIDECAR_EXTRA)
+        if out.is_file():
+            save_result(
+                orig,
+                out,
+                "_denoised",
+                ".dng",
+                write=lambda src, dst: write_denoise_sidecar(src, dst, kind),
+            )
 
 
 if __name__ == "__main__":
