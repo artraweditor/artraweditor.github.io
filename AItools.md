@@ -18,7 +18,7 @@ a file that ART can then load. It has three modes:
 |---|---|---|---|
 | **Masking** (`--mode mask`) | Click on a subject (*shift + left click* to include points, *shift + right click* to exclude them) to get a mask of it, saved as a PNG file that can be loaded in ART as an external mask | [SAM 2.1](https://github.com/facebookresearch/sam2) | an image exported from ART |
 | **Healing** (`--mode heal`) | Paint over what you want to remove (dust, objects, blemishes): the area is filled with plausible content ("generative fill") | LaMa inpainting, ported from [greycard](https://github.com/jessolmstead/greycard) | a linear image exported from ART, or any non-raw image |
-| **Denoising** (`--mode denoise`) | Removes noise from the raw data, with a before/after view to compare the results | greycard's raw denoiser (Bayer sensors) or the TreeNet models of [RawForge](https://github.com/rymuelle/RawForge) (other sensors), each at three quality levels: *fast*, *balanced*, *best* | a DNG written by `ART-cli` |
+| **Denoising** (`--mode denoise`) | Removes noise from the raw data, with a before/after view to compare the results | greycard's raw denoiser (Bayer sensors) or the TreeNet models of [RawForge](https://github.com/rymuelle/RawForge) (other sensors), each at three quality levels: *small*, *medium*, *large* | a DNG written by `ART-cli` |
 
 The denoiser works on the raw data, before any colour processing.
 The result is saved as a linear DNG (or as a linear float TIFF) that ART opens like a raw file,
@@ -83,7 +83,7 @@ The instructions below are for Unix-like systems (Linux, macOS), but they should
    ```text
    $ python SMART/src/main.py --download-mask-model base_plus    # masking: tiny, small, base_plus or large
    $ python SMART/src/main.py --download-heal-model              # healing
-   $ python SMART/src/main.py --download-denoise-model all       # denoising: fast, balanced, best, or all
+   $ python SMART/src/main.py --download-denoise-model all       # denoising: small. medium, large, or all
    ```
 
    For masking, set also the `model` parameter in the configuration file to the quality you downloaded
@@ -207,11 +207,11 @@ and the result is saved as `FILENAME_healed.EXT` in the same way.
 
 ### AI denoising
 
-Select a raw file and choose **SMART AI denoise**.
+Select a raw file and choose **SMART AI denoise** (to denoise several files at once, see [below](#denoising-several-files)).
 ART converts the file to a DNG, applying only the raw processing steps (hot and dead pixels,
 white balance, ...) set in the sidecar of the file.
 The DNG is opened in SMART in denoising mode:
-choose the model (*fast*, *balanced* or *best*; larger is better but slower) in the toolbar,
+choose the model (*small*, *medium* or *large*; larger is better but slower) in the toolbar,
 and press *Denoise* (or *Cmd/Ctrl + Enter*) to start;
 a progress dialog is shown, and the operation can be cancelled.
 When it is done, drag the divider of the view to compare the image before and after denoising
@@ -237,6 +237,16 @@ There are two kinds of DNG, depending on the raw file, and the user command choo
   They are conditioned on the ISO of the image, which is read from the file.
 
 The three model choices are the same in both cases.
+
+#### *Denoising several files*
+
+If you select several raw files, **SMART AI denoise** processes them one after the other without opening
+the SMART window, using the settings in the configuration file of SMART (`denoise_model`, `denoise_provider`,
+`denoise_tile`, `denoise_margin` and `denoise_dng_bits`; the model last chosen in the SMART window is
+the one saved there). A progress dialog is shown for each image, first for the conversion to DNG and then for the denoising,
+and each result is saved next to its original file as described above.
+Cancelling any of the dialogs stops the whole batch (the images that are already done are kept).
+If some images cannot be processed, the errors are shown together at the end.
 
 ## Notes
 

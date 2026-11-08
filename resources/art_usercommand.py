@@ -60,9 +60,12 @@ def last_lines(path, count=1):
     return "\n".join(lines[-count:])
 
 
-def run_with_progress(cmd, errfile, text, width=None, pulsate=False):
+def run_with_progress(cmd, errfile, text, width=None, pulsate=False,
+                      popen_kwargs=None):
     """Run `cmd`, showing a progress dialog driven by its standard output
     (percentages, one per line), and saving its standard error to `errfile`.
+    `popen_kwargs`: extra arguments for subprocess.Popen (e.g.
+    smart_popen_kwargs()).
     Returns the exit status of `cmd`, or None if the user cancelled."""
     dialog = ["ART-dialogs"]
     if width:
@@ -71,7 +74,8 @@ def run_with_progress(cmd, errfile, text, width=None, pulsate=False):
     if pulsate:
         dialog.append("--pulsate")
     with open(errfile, "wb") as err:
-        worker = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err)
+        worker = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err,
+                                  **(popen_kwargs or {}))
         try:
             dlg = subprocess.Popen(dialog, stdin=worker.stdout)
         except OSError:

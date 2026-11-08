@@ -1,5 +1,4 @@
 [ART UserCommand]
 Label=SMART AI denoise
 Command=python3 ./smart_denoise.py
-NumArgs=1
 FileType=raw
