@@ -113,32 +113,40 @@ def write_denoise_sidecar(src, dst, kind):
         f.write(SIDECAR_EXTRA)
 
 
-def is_bayer(raw):
-    """True if `raw` is a 2x2 RGB Bayer raw file (also if exiftool cannot
-    tell: some formats, e.g. CR3, do not report the colour filter array)."""
+BAYER, XTRANS, LINEARDNG, UNKNOWN = range(4)
+
+def get_kind(raw):
+    """BAYER if `raw` is a 2x2 RGB Bayer raw file (also if exiftool cannot
+    tell: some formats, e.g. CR3, do not report the colour filter array),
+    XTRANS for Fuji X-trans files, LINEARDNG for linear dng files,
+    and UNKNOWN otherwise."""
     try:
         out = subprocess.run(
             ["exiftool", "-json", "-XTransLayout", "-CFAPattern2",
-             "-CFARepeatPatternDim", "-CFAPlaneColor", str(raw)],
+             "-CFARepeatPatternDim", "-CFAPlaneColor", "-DNGVersion",
+             "-PhotometricInterpretation", str(raw)],
             capture_output=True,
             text=True,
             check=True,
         ).stdout
         tags = json.loads(out)[0]
     except (OSError, subprocess.CalledProcessError, ValueError, IndexError):
-        return True
+        return UNKNOWN
     if "XTransLayout" in tags:
-        return False
+        return XTRANS
+    if "DNGVersion" in tags \
+       and tags.get("PhotometricInterpretation") == "Linear Raw":
+        return LINEARDNG
     dim = str(tags.get("CFARepeatPatternDim", "2 2")).split()
     if dim and dim != ["2", "2"]:
-        return False
+        return UNKNOWN
     # the pattern lists plane indices, the planes default to R, G, B
     pattern = str(tags.get("CFAPattern2", "0 1 1 2")).split()
     planes = str(tags.get("CFAPlaneColor", "Red,Green,Blue")).split(",")
     if len(pattern) != 4 or any(not p.isdigit() for p in pattern):
-        return False
-    return all(int(p) < len(planes) and planes[int(p)].strip() in
-               ("Red", "Green", "Blue") for p in pattern)
+        return UNKNOWN
+    return BAYER if all(int(p) < len(planes) and planes[int(p)].strip() in
+                        ("Red", "Green", "Blue") for p in pattern) else UNKNOWN
 
 
 def main(args):
@@ -148,25 +156,34 @@ def main(args):
     opts = ap.parse_args(args)
     smart = smart_command(opts.smart_cmd)
     orig = Path(opts.raw).resolve()
-    kind = "mosaic" if is_bayer(orig) else "demosaic"
+    input_kind = get_kind(orig)
+    if input_kind == UNKNOWN:
+        show_error("Unknown file kind")
+        return
+        
+    kind = "mosaic" if input_kind == BAYER else "demosaic"
 
     with tempfile.TemporaryDirectory(prefix="art_smart_denoise_") as d:
         d = Path(d)
-        dng = d / (orig.stem + ".dng")
-        err = d / "error"
-        status = run_with_progress(
-            [ART_CLI, "--progress", "-d", "-s", "--raw-preprocess=" + kind]
-            + (["--dng-wb=neutral"] if kind == "mosaic" else [])
-            + ["-Y", "-o", str(dng), "-c", str(orig)],
-            err,
-            "Converting to DNG...",
-            width=500,
-        )
-        if status is None:  # cancelled by the user
-            return
-        if status != 0 or not dng.is_file():
-            show_error(last_lines(err, 5) or "Conversion error!")
-            return
+        if input_kind == LINEARDNG:
+            dng = orig
+        else:
+            dng = d / (orig.stem + ".dng")
+            err = d / "error"
+            status = run_with_progress(
+                [ART_CLI, "--progress", "-d", "-s", "--raw-preprocess=" + kind]
+                + (["--dng-wb=neutral", "--dng-levels=original"]
+                   if kind == "mosaic" else [])
+                + ["-Y", "-o", str(dng), "-c", str(orig)],
+                err,
+                "Converting to DNG...",
+                width=500,
+            )
+            if status is None:  # cancelled by the user
+                return
+            if status != 0 or not dng.is_file():
+                show_error(last_lines(err, 5) or "Conversion error!")
+                return
         out = d / "denoised.dng"
         run_smart(
             smart,
