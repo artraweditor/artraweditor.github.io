@@ -16,6 +16,7 @@ When available, they can be used in both the "Film Simulation" and in the the "C
 
 **Contents:**
 - [CLF LUTs](#clf)
+  - [Generating a 3dLUT from an ART profile](#make3dlut)
 - [CTL scripts](#ctl)
 - [Controlling the list and order of LUTs](#artlist)
 
@@ -101,6 +102,29 @@ If you want to save space, you can also compress `RESULT.clf` using gzip, and th
 Alternatively, you can also pass the `-c` flag to `combine_clf_luts.py` to generate a compressed LUT directly.
 Note though that supporting gzip compression is an ART extension, so the compressed LUTs will probably not work with other OCIO-based apps.
 
+
+### Generating a 3dLUT from an ART profile {#make3dlut}
+
+The [`make_3dlut.py`](resources/make_3dlut.py) user command (to be placed in the `usercommands` folder of the ART configuration, together with its companion [`art_usercommand.py`](resources/art_usercommand.py) and the [`make_3dlut.txt`](resources/make_3dlut.txt) entry that makes it available in the file browser) bakes the colour and tone processing of an image's `.arp` sidecar into a CLF 3dLUT, which can then be used in the Film Simulation tool (or in other OCIO-based applications) on other images.
+It is written in Python and does not need a POSIX shell, so it also works on Windows.
+
+It requires Python 3 with the `numpy` and `tifffile` packages, and `exiftool` in the `PATH`.
+
+When run from ART, a file dialog asks where to save the LUT (use the `.clfz` extension to get a gzip-compressed LUT), and a dialog shows the progress. It can also be run from a terminal:
+
+```
+  $ python make_3dlut.py [-o OUT.clf] [-s small|medium|large|huge] [-c rec2020|rec709] [-z] [--no-gui] IMAGE
+```
+
+where `IMAGE` is either the image (its sidecar `IMAGE.arp` is used) or the `.arp` file itself; if there is no sidecar, the default processing parameters are used.
+`-s` sets the size of the 3dLUT grid (16, 36, 64, the default, or 121 points per side), `-c` the colour space in which the LUT is generated (Rec.2020 by default), and `-z` compresses the output. With `--no-gui` no dialogs are used and `-o` is required.
+
+Internally, the command applies the profile to an identity grid encoded as a 32-bit TIFF image with ART-cli, and wraps the result in a CLF file with the needed colour space conversions to/from ACES 2065-1.
+
+**Caveat: spatial effects are disabled.**
+A 3dLUT can only map each pixel colour to another colour independently of its neighbours, so all the tools that depend on the image content around each pixel are turned off when generating the LUT: for example sharpening, denoising, local contrast, texture boost, dehaze, grain, smoothing and the spatial guides and masks of the Color/Tone Correction tool, as well as white balance, crop, rotation, lens and geometry corrections and resizing.
+As a consequence, applying the generated LUT to an image can give a result that differs, even noticeably, from applying the original `.arp` profile in ART, if the profile relies on any of these tools.
+The LUT is also an approximation sampled on a finite grid, so very small differences are to be expected even for profiles made only of pixel-level operations; larger sizes reduce them.
 
 ### Useful tools
 

@@ -1,0 +1,4 @@
+[ART UserCommand]
+Label=Generate 3DLUT from processing parameters
+Command=python3 ./make_3dlut.py
+NumArgs=1
