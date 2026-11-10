@@ -75,9 +75,7 @@ NIND_DENOISE_DIR = Path.home() / "src" / "nind-denoise"
 
 #### Testing that it works
 
-You should have a new user command called "AI denoise (nind-denoise)". If everything is configured properly, activating it should result in an image `FILENAME-denoised.tif` generated in the current directory (when invoked on a file called `FILENAME.raw`). Here's a quick video demo:
-
-- [AI denoising demo](demos/ART-AI-denoise.mp4)
+You should have a new user command called "AI denoise (nind-denoise)". If everything is configured properly, activating it should result in an image `FILENAME-denoised.tif` generated in the current directory (when invoked on a file called `FILENAME.raw`).
 
 ### RawForge configuration
 
@@ -188,9 +186,7 @@ If everything is configured properly, activating it should result in an image
 You can then quickly create masks by adding included (with shift + left-click)
 and excluded (with shift + right-click) points,
 and then save it as a png file.
-The file can be then loaded in ART as an external mask. Here's the corresponding demo:
-
-- [AI masking demo](demos/ART-AI-masking.mp4)
+The file can be then loaded in ART as an external mask.
 
 
 ## AI masking (Windows environment)
