@@ -7,4 +7,4 @@ title: Related projects
 
 - [A collection of CTL scripts](https://github.com/artraweditor/ART-ctlscripts/) (documentation [link](Luts.html)).
 
-- [SMART, a simple GUI for AI masking](https://github.com/artraweditor/SMART/) (documentation [link](AItools.html)).
+- [SMART, a simple GUI for AI-based masking, healing and denoising](https://github.com/artraweditor/SMART/) (documentation [link](AItools.html)).

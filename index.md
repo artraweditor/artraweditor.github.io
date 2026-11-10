@@ -9,7 +9,7 @@ layout: post
 
 Welcome to the home page of ART, a [free, open-source](https://www.gnu.org/philosophy/philosophy.html), cross-platform 
 raw image processing program. 
-ART started out as a fork of the popular [RawTherapee](http://rawtherapee.com),
+ART started out in 2019 as a fork of the popular [RawTherapee](http://rawtherapee.com),
 with the goal of offering a simpler interface and a more streamlined workflow, 
 trading a bit of customization and control over various processing parameters for ease of use.
 Over time, it has evolved into an independent project with its own development direction:
@@ -19,9 +19,9 @@ while still building on the demosaicing and processing foundations inherited fro
 
 ## Features
 
-ART and RawTherapee still share part of their heritage: the demosaicing algorithms (AMaZE, RCD, LMMSE, X-Trans, etc.) 
+ART and RawTherapee still share part of their heritage: the main demosaicing algorithms (AMaZE, RCD, LMMSE, X-Trans, etc.) 
 and many of the underlying image processing routines come from the common ancestor.
-However, the two projects have diverged significantly since ART forked from a development version of RawTherapee between versions 5.5 and 5.6, 
+However, the two projects have diverged significantly since ART forked from a development version of RawTherapee (between versions 5.5 and 5.6) in 2019, 
 and ART differs from RawTherapee in the following main aspects:
 
 - The user interface and the underlying processing pipeline have been significantly restructured, with many tools removed, some new tools added, and several tools rewritten and/or refactored. 
