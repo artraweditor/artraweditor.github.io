@@ -9,14 +9,20 @@ layout: post
 
 Welcome to the home page of ART, a [free, open-source](https://www.gnu.org/philosophy/philosophy.html), cross-platform 
 raw image processing program. 
-ART is a derivative of the popular [RawTherapee](http://rawtherapee.com),
-trading a bit of customization and control over various processing parameters for a simpler and (hopefully) easier to use interface,
-while still maintaining the power and quality of RawTherapee.
+ART started out as a fork of the popular [RawTherapee](http://rawtherapee.com),
+with the goal of offering a simpler interface and a more streamlined workflow, 
+trading a bit of customization and control over various processing parameters for ease of use.
+Over time, it has evolved into an independent project with its own development direction:
+the user interface and the processing pipeline have been largely restructured and rewritten, 
+and ART now offers its own streamlined set of tools and features, 
+while still building on the demosaicing and processing foundations inherited from RawTherapee.
 
 ## Features
 
-At a first glance, ART appears very similar to RawTherapee. 
-Compared to the latter, ART differs in the following main aspects:
+ART and RawTherapee still share part of their heritage: the demosaicing algorithms (AMaZE, RCD, LMMSE, X-Trans, etc.) 
+and many of the underlying image processing routines come from the common ancestor.
+However, the two projects have diverged significantly since ART forked from a development version of RawTherapee between versions 5.5 and 5.6, 
+and ART differs from RawTherapee in the following main aspects:
 
 - The user interface and the underlying processing pipeline have been significantly restructured, with many tools removed, some new tools added, and several tools rewritten and/or refactored. 
 
@@ -26,7 +32,9 @@ Compared to the latter, ART differs in the following main aspects:
 
 - Support for various [input and output custom image formats](Customformats) via a simple plugin system, including various [true HDR output formats](Hdroutput).
 
-- Support for using [LibRaw](https://www.libraw.org) for decoding raw files.
+- Optional [Vulkan](https://www.vulkan.org) GPU acceleration of the most demanding tools (e.g. denoising and smoothing), included in the official binary releases.
+
+- Raw files are decoded with [LibRaw](https://www.libraw.org).
 
 - Support for [ACES CLF LUTs](https://docs.acescentral.com/clf/specification/) using [OpenColorIO](https://opencolorio.org/).
 
