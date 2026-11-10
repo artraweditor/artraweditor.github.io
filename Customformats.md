@@ -75,6 +75,26 @@ that must comply with the specifications below.
 
     * `Model`: the name of the camera model producing the images that should be decoded with this handler, as stored in the exif metadata (case insensitive).
 
+### Controlling which handlers are loaded and their order
+
+By default, all the `.txt` files in the `imageio` directory are loaded, sorted by file name.
+Since ART version 1.26.11, this can be customized by putting in the same directory a text file called `ARTlist.txt`
+(the name is matched case-insensitively), in the same way as for [LUTs and CTL scripts](Luts#artlist) and [user commands](Usercommands).
+If present, the file determines which handler files are loaded, and in which order.
+
+The file contains one file name per line (relative to the `imageio` directory, or an absolute path).
+Anything starting with a `#` and up to the end of the line is ignored, and so are blank lines. For example:
+
+```
+# my handlers
+heic.txt
+webp.txt     # trailing comments are fine
+```
+
+Handler files not listed are ignored. Duplicates and entries that do not exist are skipped.
+If several handlers are defined for the same extension, the one loaded last wins, so the order in `ARTlist.txt` also decides which one is used.
+The `ARTlist.txt` file is looked for separately in the `imageio` directory shipped with ART and in the one in the ART config folder.
+
 **NOTE**: you should also add the appropriate extension to the preferences (in Preferences -> File Browser -> Parsed Extensions) in order for ART to show the pictures in the file browser.
 
 ## Example
