@@ -83,7 +83,7 @@ def main(args):
         d = Path(d)
         profile = d / "p1.arp"
         profile.write_text(PROFILE, encoding="utf-8")
-        jpg = d / "out.jpg"
+        jpg = d / (raw.stem + ".jpg")
         err = d / "error"
 
         # process the raw file with ART-cli, adding a progress dialog for user
@@ -106,10 +106,7 @@ def main(args):
             dest = save_result(raw, jpg, "_SMART", ".jpg")
             start_detached(smart + [str(dest)])
             return
-        mask = d / "mask.png"
-        run_smart(smart, ["--save-as", mask, jpg])
-        if mask.is_file():
-            save_result(raw, mask, "_mask", ".png")
+        run_smart(smart, ["--outdir", raw.parent, jpg])
 
 
 if __name__ == "__main__":
